@@ -69,6 +69,7 @@ extern "C" {
     uint8_t  buf[2 * BLAKE2S_BLOCKBYTES];
     size_t   buflen;
     uint8_t  last_node;
+    uint8_t  padding[192 - ( 8 * 4 + 2 * 4 + 2 * 4 + 2 * 64 + 4 + 1 )];
   } blake2s_state;
 
   typedef struct __blake2b_param
@@ -94,6 +95,7 @@ extern "C" {
     uint8_t  buf[2 * BLAKE2B_BLOCKBYTES];
     size_t   buflen;
     uint8_t  last_node;
+    uint8_t  padding[384 - ( 8 * 8 + 2 * 8 + 2 * 8 + 2 * 128 + 4 + 1 )];
   } blake2b_state;
 
   ALIGN( 64 ) typedef struct __blake2sp_state

@@ -1,1 +1,1 @@
-emcc nano-pow.cpp -o nano-pow/nano-pow.js -s WASM=1 -std=gnu++11 -O3 -s EXPORTED_FUNCTIONS='["_getProofOfWork"]' -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall"]'
+emcc nano-pow.cpp -o nano-pow/nano-pow.js -s WASM=1 -std=gnu++11 -O3 -s EXPORTED_FUNCTIONS='["_getProofOfWork"]' -s EXPORTED_RUNTIME_METHODS='["ccall"]' -Wno-address-of-packed-member

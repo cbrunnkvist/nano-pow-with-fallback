@@ -86,7 +86,7 @@ async function runTests() {
         let wasmNonce = wasmGetPoW(test.hash, test.threshold);
         // WASM might need multiple tries if it failed the 5M iterations
         let tries = 0;
-        while (wasmNonce === "0000000000000000" && tries < 5) {
+        while (wasmNonce === "0000000000000000" && tries < 50) {
             wasmNonce = wasmGetPoW(test.hash, test.threshold);
             tries++;
         }

@@ -93,10 +93,11 @@ uint64_t _getPow(const char *hashString, const char *thresholdString)
 
 extern "C"
 {
-    char *EMSCRIPTEN_KEEPALIVE getProofOfWork(const char *hashString, const char *thresholdString)
+    EMSCRIPTEN_KEEPALIVE 
+    const char *getProofOfWork(const char *hashString, const char *thresholdString)
     {
         uint64_t work = _getPow(hashString, thresholdString);
-        char workAsChar[32];
+        static char workAsChar[32];
         sprintf(workAsChar, "%016llx", work);
         return workAsChar;
     }

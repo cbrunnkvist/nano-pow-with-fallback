@@ -75,7 +75,7 @@ uint64_t tryToGetWork(const uint8_t *bytes, const uint64_t threshold)
         iteration -= 1;
     }
 
-    if (output > threshold)
+    if (output >= threshold)
     {
         return work;
     }
@@ -84,7 +84,7 @@ uint64_t tryToGetWork(const uint8_t *bytes, const uint64_t threshold)
 
 uint64_t _getPow(const char *hashString, const char *thresholdString)
 {
-    uint8_t *hash;
+    uint8_t hash[32];
     getBytesFromHex(hashString, hash);
     uint64_t threshold = getUIntFromHex<uint64_t>(thresholdString);
 

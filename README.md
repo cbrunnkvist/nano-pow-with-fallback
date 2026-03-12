@@ -4,18 +4,27 @@
 
 ### Overview
 
-This repo contains a simple Nano Currency PoW implementation compiled to WebAssembly
-to boost its performance on browsers. It uses **emscripten** under the hood.
+This repo contains a simple Nano Currency PoW implementation with **WebAssembly (WASM)** and **WebGPU** support to boost its performance on browsers and Node.js.
 
-Compiling to WebAssembly, the result is around 10 times faster than a pure JS PoW implementation (e.g.: [RaiBlocksJS](https://github.com/SergiySW/RaiBlocksJS/blob/master/rai.pow.js)).
+### Features
+- **WebGPU Acceleration**: Blazing fast PoW calculation using the GPU. Works in browsers and Node.js.
+- **WASM Fallback**: High-performance multi-threaded WASM implementation for environments without WebGPU.
 
-This basically makes possible to generate proofs of work on modern browsers in a **reasonable time** (see below).
+### Usage (Node.js & Modern Browsers)
 
-**Average time it takes to compute in a Ryzen 7 3700x**:
-- **Send/change blocks:** average of <25 seconds
-- **Open/receive blocks:** average of <2.5 seconds
+```javascript
+import { getProofOfWork, THRESHOLD__OPEN_RECEIVE } from 'nanocurrency-wasm-pow';
 
-### Usage
+const hash = "BD9F737DDECB0A34DFBA0EDF7017ACB0EF0AA04A6F7A73A406191EF80BB20000";
+const proofOfWork = await getProofOfWork({
+  hash,
+  threshold: THRESHOLD__OPEN_RECEIVE
+});
+
+console.log({ hash, proofOfWork });
+```
+
+### Usage (Browser Legacy)
 
 To get the proof of work you can simply add the `nano-pow/index.js` to your source code and do:
 

@@ -6,6 +6,8 @@
 
 This repo contains a simple Nano Currency PoW implementation with **WebAssembly (WASM)** and **WebGPU** support to boost its performance on browsers and Node.js.
 
+For a detailed comparison of the different implementations, see [BACKENDS.md](./BACKENDS.md).
+
 ### Features
 - **WebGPU Acceleration**: Blazing fast PoW calculation using the GPU. Works in browsers and Node.js.
 - **WASM Fallback**: High-performance multi-threaded WASM implementation for environments without WebGPU.

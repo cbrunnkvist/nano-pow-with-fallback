@@ -1,6 +1,6 @@
-NanoPow = {
-  THRESHOLD__SEND_CHANGE: "fffffff800000000", // avg > 25secs on my PC
-  THRESHOLD__OPEN_RECEIVE: "fffffe0000000000", // avg < 2.5secs on my PC
+var NanoPow = {
+  THRESHOLD__SEND_CHANGE: "fffffff800000000",
+  THRESHOLD__OPEN_RECEIVE: "fffffe0000000000",
 
   workerInitialize() {
     C_getProofOfWork = (hash, threshold) => {
@@ -29,7 +29,13 @@ NanoPow = {
     options = {}
   ) {
     return new Promise((resolve) => {
-      const workers = getPowWorkers(options.workers, options.workerScriptPath);
+      const threads = options.workers || (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 1);
+      const workers = getPowWorkers(threads, options.workerScriptPath);
+      let resolved = false;
+      let totalCalls = 0;
+      let finishedWorkers = 0;
+      let resolveValue = null;
+
       if (hash.length == 64) {
         for (let worker of workers) {
           worker.onmessage = (e) => {
@@ -37,19 +43,30 @@ NanoPow = {
             switch (message) {
               case "ready":
                 worker.postMessage({
-                  hash,
-                  threshold: threshold,
-                });
-                break;
-              case "failed":
-                worker.postMessage({
+                  command: "start",
                   hash,
                   threshold: threshold,
                 });
                 break;
               case "success":
-                terminateWorkers(workers);
-                resolve(result.proofOfWork);
+              case "stopped":
+                totalCalls += result.calls || 0;
+                finishedWorkers++;
+
+                if (message === "success" && !resolved) {
+                  resolved = true;
+                  // Stop all other workers to get their call counts
+                  for (let w of workers) {
+                    if (w !== worker) w.postMessage({ command: "stop" });
+                  }
+                  resolveValue = { proofOfWork: result.proofOfWork };
+                }
+
+                if (finishedWorkers === workers.length) {
+                  resolve({ ...resolveValue, calls: totalCalls });
+                  terminateWorkers(workers);
+                }
+                break;
             }
           };
         }
@@ -58,15 +75,48 @@ NanoPow = {
   },
 };
 
+if (typeof globalThis !== 'undefined') {
+  globalThis.NanoPow = NanoPow;
+} else if (typeof window !== 'undefined') {
+  window.NanoPow = NanoPow;
+} else if (typeof global !== 'undefined') {
+  global.NanoPow = NanoPow;
+}
+
 // multithreaded capability
 
-function getPowWorkers(
-  threads = self.navigator.hardwareConcurrency - 1,
-  workerScriptPath = ""
-) {
+let nanoPowScriptDirectory = "";
+if (typeof document !== 'undefined' && document.currentScript) {
+  nanoPowScriptDirectory = new URL('.', document.currentScript.src).href;
+} else if (typeof self !== 'undefined' && self.location) {
+  nanoPowScriptDirectory = new URL('.', self.location.href).href;
+}
+
+function defaultThreadCount() {
+  const hardwareConcurrency =
+    typeof navigator !== 'undefined' && typeof navigator.hardwareConcurrency === 'number'
+      ? navigator.hardwareConcurrency
+      : 4;
+  return Math.max(1, hardwareConcurrency - 1);
+}
+
+function normalizeThreadCount(threads) {
+  if (threads === undefined || threads === null) {
+    return defaultThreadCount();
+  }
+  const numeric = Number(threads);
+  if (!Number.isFinite(numeric)) {
+    return defaultThreadCount();
+  }
+  return Math.max(1, Math.floor(numeric));
+}
+
+function getPowWorkers(threads, workerScriptPath = "") {
+  const workerCount = normalizeThreadCount(threads);
   const workers = [];
-  for (let i = 0; i < threads; i++) {
-    workers[i] = new Worker(workerScriptPath || "/nano-pow/thread-worker.js");
+  const finalPath = workerScriptPath || (nanoPowScriptDirectory + "thread-worker.js");
+  for (let i = 0; i < workerCount; i++) {
+    workers[i] = new Worker(finalPath);
   }
   return workers;
 }

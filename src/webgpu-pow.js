@@ -1,9 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 let gpu = null;
 
 async function getGpu() {
@@ -49,32 +43,15 @@ function hexToUint32Array(hex) {
     if (hex.length % 8 !== 0) throw new Error("Hex string must be multiple of 8");
     const arr = new Uint32Array(hex.length / 8);
     for (let i = 0; i < arr.length; i++) {
-        // Nano uses little-endian for threshold and nonces in memory usually, 
-        // but Blake2b uses little-endian internally.
-        // We need to be careful with byte order.
         const part = hex.substr(i * 8, 8);
-        // Reverse bytes for little-endian if necessary
-        // In nano-pow.cpp, getUIntFromHex reads as a big-endian uint64
-        // But WASM/JS Uint32Array is native-endian.
-        
-        // Let's assume big-endian hex input and convert to little-endian u32 pairs
         const val = parseInt(part, 16);
         arr[i] = val; 
     }
-    // Reverse the whole array or parts? 
-    // Nano threshold "fffffff800000000" means high bits are Fs.
-    // In our WGSL: threshold.y is high bits, threshold.x is low bits.
-    // So for "fffffff800000000":
-    // threshold.y = 0xfffffff8
-    // threshold.x = 0x00000000
-    
     return arr;
 }
 
 function hexToUint32ArrayLE(hex) {
     const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-    // If it's 32 bytes (hash), we want 8 u32s.
-    // If it's 8 bytes (threshold), we want 2 u32s.
     const view = new DataView(bytes.buffer);
     const arr = new Uint32Array(bytes.length / 4);
     for (let i = 0; i < arr.length; i++) {
@@ -96,8 +73,17 @@ export class WebGPUPow {
         if (!adapter) throw new Error("No GPU adapter found");
         this.device = await adapter.requestDevice();
 
-        const shaderPath = path.join(__dirname, 'pow.wgsl');
-        this.shaderCode = fs.readFileSync(shaderPath, 'utf8');
+        if (typeof window !== 'undefined') {
+            const response = await fetch('./src/pow.wgsl');
+            this.shaderCode = await response.text();
+        } else {
+            const fs = await import('fs');
+            const path = await import('path');
+            const { fileURLToPath } = await import('url');
+            const dirname = path.dirname(fileURLToPath(import.meta.url));
+            const shaderPath = path.join(dirname, 'pow.wgsl');
+            this.shaderCode = fs.readFileSync(shaderPath, 'utf8');
+        }
 
         const bindGroupLayout = this.device.createBindGroupLayout({
             entries: [
@@ -230,7 +216,7 @@ export class WebGPUPow {
             commandEncoder.copyBufferToBuffer(resultBuffer, 0, stagingBuffer, 0, 16);
             this.device.queue.submit([commandEncoder.finish()]);
 
-            await stagingBuffer.mapAsync('READ');
+            await stagingBuffer.mapAsync(GPUMapMode.READ);
             const arrayBuffer = stagingBuffer.getMappedRange();
             const resultArray = new Uint32Array(arrayBuffer);
             

@@ -3,22 +3,30 @@ self.importScripts("index.js");
 
 Module.onRuntimeInitialized = NanoPow.workerInitialize;
 
+let running = false;
+let calls = 0;
+
 onmessage = function (ev) {
-  const { hash, threshold } = ev.data;
+  const { command, hash, threshold } = ev.data;
 
-  const proofOfWork = NanoPow._getProofOfWork(hash, threshold);
-
-  if (proofOfWork !== "0000000000000000") {
-    powFound(hash, threshold, proofOfWork);
-  } else {
-    powNotFound();
+  if (command === 'start') {
+    running = true;
+    calls = 0;
+    while (running) {
+      const nonce = NanoPow._getProofOfWork(hash, threshold);
+      calls++;
+      if (nonce !== "0000000000000000") {
+        running = false;
+        powFound(hash, threshold, nonce, calls);
+        return;
+      }
+    }
+  } else if (command === 'stop') {
+    running = false;
+    postMessage({ message: 'stopped', calls });
   }
 };
 
-function powNotFound() {
-  return postMessage({ message: "failed" });
-}
-
-function powFound(hash, threshold, proofOfWork) {
-  return postMessage({ message: "success", hash, threshold, proofOfWork });
+function powFound(hash, threshold, proofOfWork, calls) {
+  return postMessage({ message: "success", hash, threshold, proofOfWork, calls });
 }

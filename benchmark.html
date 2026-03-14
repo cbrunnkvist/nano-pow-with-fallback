@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoPoW Benchmark</title>
+    <style>
+        :root {
+            --bg: #fafafa;
+            --fg: #1a1a1a;
+            --muted: #6b7280;
+            --accent: #2563eb;
+            --success: #16a34a;
+            --warning: #ca8a04;
+            --error: #dc2626;
+            --border: #e5e7eb;
+            --card: #ffffff;
+            --progress-bg: #e5e7eb;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            color: var(--muted);
+            font-size: 0.875rem;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        button {
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.5rem;
+            border: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all0.15s ease;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: #1d4ed8;
+        }
+        
+        .btn-secondary {
+            background: var(--card);
+            color: var(--fg);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--bg);
+        }
+        
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+        
+        .btn-danger:hover:not(:disabled) {
+            background: #b91c1c;
+        }
+        
+        .btn-icon {
+            padding: 0.5rem;
+            background: transparent;
+            color: var(--muted);
+        }
+        
+        .btn-icon:hover:not(:disabled) {
+            color: var(--accent);
+            background: transparent;
+        }
+        
+        .config {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .config-row {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .config-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+        
+        .config-group label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+        }
+        
+        .config-group select,
+        .config-group input {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            min-width: 180px;
+        }
+        
+        .progress-section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .progress-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 0;
+        }
+        
+        .progress-item:not(:last-child) {
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .backend-name {
+            font-weight: 500;
+            min-width: 100px;
+        }
+        
+        .progress-bar-container {
+            flex: 1;
+            height: 8px;
+            background: var(--progress-bg);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-bar.success {
+            background: var(--success);
+        }
+        
+        .progress-bar.running {
+            background: var(--warning);
+        }
+        
+        .progress-text {
+            font-size: 0.875rem;
+            color: var(--muted);
+            min-width: 80px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .status-waiting {
+            background: var(--progress-bg);
+            color: var(--muted);
+        }
+        
+        .status-running {
+            background: #fef3c7;
+            color: var(--warning);
+        }
+        
+        .status-complete {
+            background: #dcfce7;
+            color: var(--success);
+        }
+        
+        .status-error {
+            background: #fee2e2;
+            color: var(--error);
+        }
+        
+        .results-section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th,
+        td {
+            padding: 1rem 1.25rem;
+            text-align: left;
+        }
+        
+        th {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        td {
+            font-variant-numeric: tabular-nums;
+        }
+        
+        tr:not(:last-child) td {
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .cell-backend {
+            font-weight: 500;
+        }
+        
+        .cell-speedup {
+            font-weight: 600;
+        }
+        
+        .speedup-high {
+            color: var(--success);
+        }
+        
+        .speedup-low {
+            color: var(--muted);
+        }
+        
+        .cell-actions {
+            text-align: right;
+        }
+        
+        .notes {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #f3f4f6;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--muted);
+        }
+        
+        .notes ul {
+            margin-top: 0.5rem;
+            padding-left: 1.25rem;
+        }
+        
+        .notes li {
+            margin-bottom: 0.25rem;
+        }
+        
+        .init-status {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .init-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .init-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .init-dot.pending {
+            background: var(--progress-bg);
+        }
+        
+        .init-dot.ready {
+            background: var(--success);
+        }
+        
+        .init-dot.error {
+            background: var(--error);
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        
+        .running .progress-bar {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 0.8s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>NanoPoW Benchmark</h1>
+                <p class="subtitle">Compare WASM, WebGPU, and WebGL performance</p>
+            </div>
+            <div class="controls">
+                <button id="startBtn" class="btn-primary" onclick="startBenchmark()">Start</button>
+                <button id="stopBtn" class="btn-danger" onclick="stopBenchmark()" disabled>Stop</button>
+                <button id="skipBtn" class="btn-secondary" onclick="skipCurrent()" disabled>Skip</button>
+            </div>
+        </header>
+        
+        <div class="init-status" id="initStatus">
+            <div class="init-item">
+                <span class="init-dot pending" id="wasmStatus"></span>
+                <span>WASM</span>
+            </div>
+            <div class="init-item">
+                <span class="init-dot pending" id="wasmMultiStatus"></span>
+                <span>WASM (Multi)</span>
+            </div>
+            <div class="init-item">
+                <span class="init-dot pending" id="webgpuStatus"></span>
+                <span>WebGPU</span>
+            </div>
+            <div class="init-item">
+                <span class="init-dot pending" id="webglStatus"></span>
+                <span>WebGL</span>
+            </div>
+        </div>
+        
+        <div class="config">
+            <div class="config-row">
+                <div class="config-group">
+                    <label for="threshold">Threshold</label>
+                    <select id="threshold">
+                        <option value="fffffe0000000000">Open/Receive (~1M hashes)</option>
+                        <option value="fffffff800000000">Send/Change (~8M hashes)</option>
+                    </select>
+                </div>
+                <div class="config-group">
+                    <label for="runs">Runs perBackend</label>
+                    <input type="number" id="runs" value="3" min="1" max="10">
+                </div>
+                <div class="config-group">
+                    <label for="threads">WASM Threads</label>
+                    <input type="number" id="threads" value="4" min="1" max="32">
+                </div>
+            </div>
+        </div>
+        
+        <div class="progress-section">
+            <div id="progressContainer">
+                <div class="progress-item" id="progress-wasm">
+                    <span class="backend-name">WASM (1)</span>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <span class="progress-text">Waiting...</span>
+                </div>
+                <div class="progress-item" id="progress-wasm-multi">
+                    <span class="backend-name">WASM (Multi)</span>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <span class="progress-text">Waiting...</span>
+                </div>
+                <div class="progress-item" id="progress-webgpu">
+                    <span class="backend-name">WebGPU</span>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <span class="progress-text">Waiting...</span>
+                </div>
+                <div class="progress-item" id="progress-webgl">
+                    <span class="backend-name">WebGL</span>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <span class="progress-text">Waiting...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="results-section">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Backend</th>
+                        <th>Avg HashRate</th>
+                        <th>Range</th>
+                        <th>Time</th>
+                        <th>Speedup</th>
+                        <th class="cell-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                    <tr id="row-wasm">
+                        <td class="cell-backend">WASM (1)</td>
+                        <td id="result-wasm-rate">--</td>
+                        <td id="result-wasm-range">--</td>
+                        <td id="result-wasm-time">--</td>
+                        <td class="cell-speedup speedup-low" id="result-wasm-speedup">1.0x</td>
+                        <td class="cell-actions"><button class="btn-icon" onclick="rerunBackend('wasm')" title="Rerun">↻</button></td>
+                    </tr>
+                    <tr id="row-wasm-multi">
+                        <td class="cell-backend">WASM (Multi)</td>
+                        <td id="result-wasm-multi-rate">--</td>
+                        <td id="result-wasm-multi-range">--</td>
+                        <td id="result-wasm-multi-time">--</td>
+                        <td class="cell-speedup" id="result-wasm-multi-speedup">--</td>
+                        <td class="cell-actions"><button class="btn-icon" onclick="rerunBackend('wasm-multi')" title="Rerun">↻</button></td>
+                    </tr>
+                    <tr id="row-webgpu">
+                        <td class="cell-backend">WebGPU</td>
+                        <td id="result-webgpu-rate">--</td>
+                        <td id="result-webgpu-range">--</td>
+                        <td id="result-webgpu-time">--</td>
+                        <td class="cell-speedup" id="result-webgpu-speedup">--</td>
+                        <td class="cell-actions"><button class="btn-icon" onclick="rerunBackend('webgpu')" title="Rerun">↻</button></td>
+                    </tr>
+                    <tr id="row-webgl">
+                        <td class="cell-backend">WebGL</td>
+                        <td id="result-webgl-rate">--</td>
+                        <td id="result-webgl-range">--</td>
+                        <td id="result-webgl-time">--</td>
+                        <td class="cell-speedup" id="result-webgl-speedup">--</td>
+                        <td class="cell-actions"><button class="btn-icon" onclick="rerunBackend('webgl')" title="Rerun">↻</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="notes">
+            <strong>Notes:</strong>
+            <ul>
+                <li>Hash rate = hashes computed per second (higher is better)</li>
+                <li>Speedup compares each backend to WASM (1) baseline</li>
+                <li>WASM uses CPU computation (Single-threaded vs Multi-threaded)</li>
+                <li>WebGPU uses GPU compute shaders (fastest)</li>
+                <li>WebGL uses GPU fragment shaders (browser-only)</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize WASM global
+        let wasmReady = false;
+        let wasmGetPoW = null;
+    </script>
+    <script src="./nano-pow/index.js"></script>
+    <script src="./nano-pow/nano-pow.js"></script>
+    <script type="module">
+        import { WebGPUPow } from './src/webgpu-pow.js';
+        import { WebGLPow } from './src/webgl-pow.js';
+        
+        // State
+        let isRunning = false;
+        let isStopped = false;
+        let isSkipped = false;
+        let currentBackend = null;
+        let abortController = null;
+        let results = {
+            wasm: null,
+            'wasm-multi': null,
+            webgpu: null,
+            webgl: null
+        };
+        
+        // Backend instances
+        let webgpuPow = null;
+        let webglPow = null;
+        
+        // Test constants
+        const TEST_HASH = 'BD9F737DDECB0A34DFBA0EDF7017ACB0EF0AA04A6F7A73A406191EF80BB20000';
+        const WASM_ITERATIONS_PER_CALL = 5_000_000;
+        const WEBGPU_ITERATIONS_PER_BATCH = 10_000_000;
+        let currentThreshold = 'fffffe0000000000';
+        
+        // WASM benchmark (single-threaded via worker)
+        let wasmWorker = null;
+        let wasmResolve = null;
+        
+        function createWasmWorker() {
+            return new Promise((resolve, reject) => {
+                const worker = new Worker('./nano-pow/thread-worker.js');
+                worker.onmessage = (e) => {
+                    const { message, ...result } = e.data;
+                    switch (message) {
+                        case 'ready':
+                            resolve(worker);
+                            break;
+                        case 'success':
+                            if (wasmResolve) {
+                                wasmResolve({ proofOfWork: result.proofOfWork, calls: result.calls });
+                                wasmResolve = null;
+                            }
+                            break;
+                    }
+                };
+                worker.onerror = reject;
+            });
+        }
+        
+        // Initialize backends
+        async function initBackends() {
+            // Set default threads
+            document.getElementById('threads').value = navigator.hardwareConcurrency || 4;
+
+            // Initialize WASM
+            updateStatus('wasm', 'pending');
+            const wasmPromise = createWasmWorker().then(worker => {
+                wasmWorker = worker;
+                updateStatus('wasm', 'ready');
+            }).catch(e => {
+                console.error('WASM init failed:', e);
+                updateStatus('wasm', 'error');
+            });
+
+            // Initialize WASM Multi
+            updateStatus('wasmMulti', 'ready');
+            
+            // Initialize WebGPU
+            updateStatus('webgpu', 'pending');
+            const webgpuPromise = (async () => {
+                try {
+                    if (!navigator.gpu) {
+                        throw new Error('WebGPU not supported');
+                    }
+                    webgpuPow = new WebGPUPow();
+                    await webgpuPow.init();
+                    updateStatus('webgpu', 'ready');
+                } catch (e) {
+                    console.error('WebGPU init failed:', e);
+                    updateStatus('webgpu', 'error');
+                }
+            })();
+            
+            // Initialize WebGL
+            updateStatus('webgl', 'pending');
+            const webglPromise = (async () => {
+                try {
+                    webglPow = new WebGLPow();
+                    await webglPow.init();
+                    updateStatus('webgl', 'ready');
+                } catch (e) {
+                    console.error('WebGL init failed:', e);
+                    updateStatus('webgl', 'error');
+                }
+            })();
+
+            await Promise.all([wasmPromise, webgpuPromise, webglPromise]);
+        }
+        
+        function updateStatus(backend, status) {
+            const dot = document.getElementById(`${backend}Status`);
+            dot.className = 'init-dot ' + status;
+        }
+        
+        function formatHashRate(rate) {
+            if (rate >= 1_000_000) return (rate / 1_000_000).toFixed(2) + ' MH/s';
+            if (rate >= 1_000) return (rate / 1_000).toFixed(1) + ' KH/s';
+            return rate.toFixed(0) + ' H/s';
+        }
+        
+        function formatTime(ms) {
+            if (ms >= 1000) return (ms / 1000).toFixed(2) + 's';
+            return ms.toFixed(0) + 'ms';
+        }
+        
+        function updateProgress(backend, percent, text) {
+            const item = document.getElementById(`progress-${backend}`);
+            const bar = item.querySelector('.progress-bar');
+            const textEl = item.querySelector('.progress-text');
+            
+            bar.style.width = `${percent}%`;
+            
+            if (percent > 0 && percent < 100) {
+                textEl.innerHTML = `<span class="spinner"></span>${text}`;
+            } else {
+                textEl.textContent = text;
+            }
+            
+            if (percent >= 100) {
+                bar.classList.add('success');
+                bar.classList.remove('running');
+            } else if (percent > 0) {
+                bar.classList.add('running');
+                bar.classList.remove('success');
+            }
+        }
+        
+        function updateResult(backend, data) {
+            results[backend] = data;
+            
+            document.getElementById(`result-${backend}-rate`).textContent = formatHashRate(data.avgHashRate);
+            document.getElementById(`result-${backend}-range`).textContent = 
+                `${formatHashRate(data.minHashRate)} - ${formatHashRate(data.maxHashRate)}`;
+            document.getElementById(`result-${backend}-time`).textContent = formatTime(data.avgTime);
+            
+            // Update speedup
+            if (results.wasm && backend !== 'wasm') {
+                const speedup = data.avgHashRate / results.wasm.avgHashRate;
+                const speedupEl = document.getElementById(`result-${backend}-speedup`);
+                speedupEl.textContent = speedup.toFixed(1) + 'x';
+                speedupEl.className = 'cell-speedup ' + (speedup > 5 ? 'speedup-high' : 'speedup-low');
+            }
+        }
+        
+        // WASM benchmark (using web worker)
+        async function runWasmBenchmark(threshold, runs, onProgress) {
+            const runResults = [];
+            
+            for (let i = 0; i < runs; i++) {
+                if (abortController && abortController.signal.aborted) break;
+                
+                onProgress((i / runs) * 100 + 0.1, `Run ${i + 1}/${runs}...`);
+                currentThreshold = threshold;
+                
+                const startTime = performance.now();
+                
+                const result = await new Promise((resolve, reject) => {
+                    wasmResolve = resolve;
+                    
+                    const onAbort = () => {
+                        wasmWorker.terminate();
+                        createWasmWorker().then(w => wasmWorker = w); // Recreate for next time
+                        reject(new Error('Aborted'));
+                    };
+                    
+                    if (abortController.signal.aborted) {
+                        return onAbort();
+                    }
+                    
+                    abortController.signal.addEventListener('abort', onAbort, { once: true });
+                    
+                    wasmWorker.postMessage({ command: 'start', hash: TEST_HASH, threshold: threshold });
+                }).finally(() => {
+                    // Clean up listener if it didn't abort
+                    // (Playwright/Modern browsers handle this well with {once:true} but good practice)
+                });
+                
+                const { proofOfWork, calls } = result;
+                const timeMs = performance.now() - startTime;
+                
+                const iterations = (calls || 1) * WASM_ITERATIONS_PER_CALL;
+                
+                runResults.push({
+                    iterations,
+                    timeMs,
+                    hashRate: (iterations / timeMs) * 1000
+                });
+            }
+            
+            onProgress(100, 'Complete');
+            
+            return {
+                avgHashRate: runResults.reduce((s, r) => s + r.hashRate, 0) / runResults.length,
+                minHashRate: Math.min(...runResults.map(r => r.hashRate)),
+                maxHashRate: Math.max(...runResults.map(r => r.hashRate)),
+                avgTime: runResults.reduce((s, r) => s + r.timeMs, 0) / runResults.length
+            };
+        }
+
+        // WASM Multi-threaded benchmark
+        async function runWasmMultiBenchmark(threshold, runs, onProgress) {
+            const runResults = [];
+            const threadCount = parseInt(document.getElementById('threads').value);
+            
+            for (let i = 0; i < runs; i++) {
+                if (abortController && abortController.signal.aborted) break;
+                
+                onProgress((i / runs) * 100 + 0.1, `Run ${i + 1}/${runs}...`);
+                
+                const startTime = performance.now();
+                
+                const result = await new Promise((resolve, reject) => {
+                    const onAbort = () => reject(new Error('Aborted'));
+                    if (abortController.signal.aborted) return onAbort();
+                    abortController.signal.addEventListener('abort', onAbort, { once: true });
+
+                    NanoPow.getProofOfWorkMultiThreaded(
+                        { hash: TEST_HASH, threshold: threshold },
+                        { workers: threadCount }
+                    ).then(resolve).catch(reject);
+                });
+                
+                const { proofOfWork, calls } = result;
+                const timeMs = performance.now() - startTime;
+                
+                // Now 'calls' is already the sum of all threads
+                const totalIterations = calls * WASM_ITERATIONS_PER_CALL; 
+                
+                runResults.push({
+                    iterations: totalIterations,
+                    timeMs,
+                    hashRate: (totalIterations / timeMs) * 1000
+                });
+            }
+            
+            onProgress(100, 'Complete');
+            
+            return {
+                avgHashRate: runResults.reduce((s, r) => s + r.hashRate, 0) / runResults.length,
+                minHashRate: Math.min(...runResults.map(r => r.hashRate)),
+                maxHashRate: Math.max(...runResults.map(r => r.hashRate)),
+                avgTime: runResults.reduce((s, r) => s + r.timeMs, 0) / runResults.length
+            };
+        }
+        async function runWebGpuBenchmark(threshold, runs, onProgress) {
+            const runResults = [];
+            
+            for (let i = 0; i < runs; i++) {
+                if (abortController && abortController.signal.aborted) break;
+                
+                onProgress((i / runs) * 100 + 0.1, `Run ${i + 1}/${runs}...`);
+                
+                const startTime = performance.now();
+                
+                // Run the actual benchmark
+                const nonce = await new Promise((resolve, reject) => {
+                    const onAbort = () => reject(new Error('Aborted'));
+                    if (abortController.signal.aborted) return onAbort();
+                    abortController.signal.addEventListener('abort', onAbort, { once: true });
+
+                    webgpuPow.getProofOfWork(TEST_HASH, threshold).then(resolve).catch(reject);
+                });
+
+                const iterations = WEBGPU_ITERATIONS_PER_BATCH; 
+                
+                const timeMs = performance.now() - startTime;
+                
+                runResults.push({
+                    iterations,
+                    timeMs,
+                    hashRate: (iterations / timeMs) * 1000
+                });
+            }
+            
+            onProgress(100, 'Complete');
+            
+            return {
+                avgHashRate: runResults.reduce((s, r) => s + r.hashRate, 0) / runResults.length,
+                minHashRate: Math.min(...runResults.map(r => r.hashRate)),
+                maxHashRate: Math.max(...runResults.map(r => r.hashRate)),
+                avgTime: runResults.reduce((s, r) => s + r.timeMs, 0) / runResults.length
+            };
+        }
+        
+        // WebGL benchmark
+        async function runWebGlBenchmark(threshold, runs, onProgress) {
+            const runResults = [];
+            
+            for (let i = 0; i < runs; i++) {
+                if (abortController && abortController.signal.aborted) break;
+                
+                onProgress((i / runs) * 100 + 0.1, `Run ${i + 1}/${runs}...`);
+                
+                const startTime = performance.now();
+                
+                const nonce = await new Promise((resolve, reject) => {
+                    const onAbort = () => reject(new Error('Aborted'));
+                    if (abortController.signal.aborted) return onAbort();
+                    abortController.signal.addEventListener('abort', onAbort, { once: true });
+
+                    webglPow.getProofOfWork(TEST_HASH, threshold).then(resolve).catch(reject);
+                });
+
+                const iterations = webglPow.getIterations();
+                
+                const timeMs = performance.now() - startTime;
+                
+                runResults.push({
+                    iterations,
+                    timeMs,
+                    hashRate: (iterations / timeMs) * 1000
+                });
+            }
+            
+            onProgress(100, 'Complete');
+            
+            return {
+                avgHashRate: runResults.reduce((s, r) => s + r.hashRate, 0) / runResults.length,
+                minHashRate: Math.min(...runResults.map(r => r.hashRate)),
+                maxHashRate: Math.max(...runResults.map(r => r.hashRate)),
+                avgTime: runResults.reduce((s, r) => s + r.timeMs, 0) / runResults.length
+            };
+        }
+        
+        // Main benchmark runner
+        async function runBenchmark(backend, threshold, runs) {
+            currentBackend = backend;
+            
+            switch (backend) {
+                case 'wasm':
+                    return await runWasmBenchmark(threshold, runs, (pct, txt) => 
+                        updateProgress('wasm', pct, txt));
+                case 'wasm-multi':
+                    return await runWasmMultiBenchmark(threshold, runs, (pct, txt) => 
+                        updateProgress('wasm-multi', pct, txt));
+                case 'webgpu':
+                    return await runWebGpuBenchmark(threshold, runs, (pct, txt) => 
+                        updateProgress('webgpu', pct, txt));
+                case 'webgl':
+                    return await runWebGlBenchmark(threshold, runs, (pct, txt) => 
+                        updateProgress('webgl', pct, txt));
+            }
+        }
+        
+        // Control functions
+        window.startBenchmark = async function() {
+            if (isRunning) return;
+            isRunning = true;
+            isStopped = false;
+            
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('skipBtn').disabled = false;
+
+            // Ensure initialization is complete
+            if (!wasmWorker || (window.navigator.gpu && !webgpuPow)) {
+                updateProgress('wasm', 0, 'Waiting for init...');
+                await initBackends();
+            }
+            
+            const threshold = document.getElementById('threshold').value;
+            const runs = parseInt(document.getElementById('runs').value);
+            
+            const backends = ['wasm', 'wasm-multi', 'webgpu', 'webgl'];
+            
+            for (const backend of backends) {
+                if (isStopped) break;
+                isSkipped = false;
+                // New controller for each backend to support skipping
+                abortController = new AbortController();
+                
+                updateProgress(backend, 0, 'Running...');
+                
+                try {
+                    const result = await runBenchmark(backend, threshold, runs);
+                    updateResult(backend, result);
+                } catch (e) {
+                    if (isSkipped) {
+                        console.log(`${backend} skipped`);
+                        updateProgress(backend, 0, 'Skipped');
+                    } else if (isStopped || e.name === 'AbortError' || abortController.signal.aborted) {
+                        console.log(`${backend} stopped`);
+                    } else {
+                        console.error(`${backend} benchmark failed:`, e);
+                        updateProgress(backend, 0, 'Error: ' + e.message);
+                    }
+                }
+                
+                currentBackend = null;
+            }
+            
+            isRunning = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('skipBtn').disabled = true;
+        };
+        
+        window.stopBenchmark = function() {
+            isStopped = true;
+            if (abortController) {
+                abortController.abort();
+            }
+            isRunning = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('skipBtn').disabled = true;
+            
+            // Mark current as stopped
+            if (currentBackend) {
+                updateProgress(currentBackend, 0, 'Stopped');
+            }
+        };
+        
+        window.skipCurrent = function() {
+            isSkipped = true;
+            if (abortController) {
+                abortController.abort();
+            }
+            // The loop will continue to next backend
+        };
+        
+        window.rerunBackend = async function(backend) {
+            if (isRunning) return;
+            isStopped = false;
+
+            // Ensure initialization is complete
+            if (!wasmWorker || (window.navigator.gpu && !webgpuPow)) {
+                updateProgress(backend, 0, 'Waiting for init...');
+                await initBackends();
+            }
+
+            abortController = new AbortController();
+            
+            const threshold = document.getElementById('threshold').value;
+            const runs = parseInt(document.getElementById('runs').value);
+            
+            updateProgress(backend, 0, 'Running...');
+            
+            try {
+                const result = await runBenchmark(backend, threshold, runs);
+                updateResult(backend, result);
+            } catch (e) {
+                if (e.name === 'AbortError' || abortController.signal.aborted) {
+                    console.log(`${backend} rerun skipped or stopped`);
+                } else {
+                    console.error(`${backend} benchmark failed:`, e);
+                    updateProgress(backend, 0, 'Error: ' + e.message);
+                }
+            }
+        };
+        
+        // Initialize on load
+        initBackends();
+    </script>
+</body>
+</html>

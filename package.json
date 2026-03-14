@@ -1,15 +1,25 @@
 {
   "name": "nanocurrency-wasm-pow",
   "version": "1.0.0",
-  "description": "Nano Currency PoW implementation in WASM and WebGPU",
+  "description": "Nano Currency PoW implementation with WASM, WebGPU, and WebGL backends",
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",
-    "./webgpu": "./src/webgpu-pow.js"
+    "./webgpu": "./src/webgpu-pow.js",
+    "./webgl": "./src/webgl-pow.js"
   },
   "scripts": {
+    "start": "node benchmark-server.js",
     "test": "node test/unit-tests.js",
-    "benchmark": "node test/benchmark.js"
+    "benchmark": "node test/benchmark.js",
+    "benchmark:node": "node test/benchmark.js",
+    "benchmark:web": "node benchmark-server.js",
+    "test:e2e": "npx playwright test",
+    "test:e2e:watch": "npx playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "dotenv": "^16.6.1"
   },
   "dependencies": {
     "@sylphx/webgpu": "^1.0.4",

@@ -2,3 +2,8 @@ node_modules/
 nano-pow/nano-pow.wasm.b64
 nano-pow/nano-pow.wasm.b64.flat
 package-lock.json
+.env
+.env.*
+playwright-report/
+test-results/
+.playwright-mcp/

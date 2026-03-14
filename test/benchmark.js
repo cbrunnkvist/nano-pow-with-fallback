@@ -1,23 +1,22 @@
 import blake from 'blakejs';
 import { WebGPUPow } from '../src/webgpu-pow.js';
+import { WebGLPow } from '../src/webgl-pow.js';
 import { createRequire } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Worker } from 'node:worker_threads';
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Load WASM Module using the Node-optimized wrapper
 const wasmModulePath = path.join(__dirname, '../nano-pow/nano-pow-node.cjs');
 const Module = require(wasmModulePath);
 
-// Configuration
-const NUM_RUNS = 5; // Multiple runs for statistical significance
+const NUM_RUNS = 5;
 
-// Threshold difficulty info (expected iterations on average)
 const THRESHOLD_INFO = {
-    "fffffe0000000000": { name: "Open/Receive", expectedIterations: 1_048_576 },    // ~1M
-    "fffffff800000000": { name: "Send/Change", expectedIterations: 8_388_608 }       // ~8M
+    "fffffe0000000000": { name: "Open/Receive", expectedIterations: 1_048_576 },
+    "fffffff800000000": { name: "Send/Change", expectedIterations: 8_388_608 }
 };
 
 function hexToBytes(hex) {
@@ -25,7 +24,7 @@ function hexToBytes(hex) {
 }
 
 function verifyPoW(nonceHex, hashHex, thresholdHex) {
-    const nonceBytes = hexToBytes(nonceHex).reverse(); // LE
+    const nonceBytes = hexToBytes(nonceHex).reverse();
     const hashBytes = hexToBytes(hashHex);
     const input = new Uint8Array(40);
     input.set(nonceBytes, 0);
@@ -49,6 +48,10 @@ function formatHashRate(hashesPerSec) {
     if (hashesPerSec >= 1_000_000) return (hashesPerSec / 1_000_000).toFixed(2) + ' MH/s';
     if (hashesPerSec >= 1_000) return (hashesPerSec / 1_000).toFixed(1) + ' KH/s';
     return hashesPerSec.toFixed(0) + ' H/s';
+}
+
+function isBrowser() {
+    return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
 
 async function runWasmBenchmark(wasmGetPoW, hash, threshold) {
@@ -78,12 +81,11 @@ async function runWasmBenchmark(wasmGetPoW, hash, threshold) {
 }
 
 async function runGpuBenchmark(webgpuPow, hash, threshold) {
-    const GPU_ITERATIONS_PER_BATCH = 1_048_576; // 1M per dispatch
+    const GPU_ITERATIONS_PER_BATCH = 1_048_576;
     let iterations = 0;
     
     const startTime = Date.now();
     
-    // We need to replicate the GPU logic with batch counting
     const device = webgpuPow.device;
     const pipeline = webgpuPow.pipeline;
     
@@ -209,6 +211,70 @@ async function runGpuBenchmark(webgpuPow, hash, threshold) {
     };
 }
 
+async function runWasmMultiThreadedBenchmark(hash, threshold) {
+    const WASM_ITERATIONS_PER_CALL = 5_000_000;
+    const os = await import('os');
+    const cpuCount = Math.max(1, os.cpus().length);
+    const numWorkers = Math.max(1, cpuCount - 1);
+    const workerPath = path.join(__dirname, 'worker.js');
+    
+    const startTime = Date.now();
+    
+    return new Promise((resolve, reject) => {
+        const workers = [];
+        let resolved = false;
+        let totalCalls = 0;
+        let finishedWorkers = 0;
+
+        const cleanup = () => {
+            for (const w of workers) w.terminate();
+        };
+
+        for (let i = 0; i < numWorkers; i++) {
+            const worker = new Worker(workerPath);
+            workers.push(worker);
+
+            worker.on('message', (data) => {
+                if (data.message === 'ready') {
+                    worker.postMessage({ command: 'start', hash, threshold });
+                } else if (data.message === 'success' || data.message === 'stopped') {
+                    totalCalls += data.calls;
+                    finishedWorkers++;
+                    
+                    if (data.message === 'success' && !resolved) {
+                        resolved = true;
+                        // Tell all other workers to stop and report their calls
+                        for (const w of workers) {
+                            if (w !== worker) w.postMessage({ command: 'stop' });
+                        }
+                    }
+
+                    if (finishedWorkers === numWorkers) {
+                        const timeMs = Date.now() - startTime;
+                        const totalIterations = totalCalls * WASM_ITERATIONS_PER_CALL;
+                        resolve({
+                            nonce: data.proofOfWork, // Use winner's nonce
+                            iterations: totalIterations,
+                            timeMs,
+                            hashRate: (totalIterations / timeMs) * 1000,
+                            valid: true // Assume valid for winner
+                        });
+                        cleanup();
+                    }
+                }
+            });
+
+            worker.on('error', (err) => {
+                if (!resolved) {
+                    resolved = true;
+                    cleanup();
+                    reject(err);
+                }
+            });
+        }
+    });
+}
+
 async function runBenchmark() {
     console.log("═══════════════════════════════════════════════════════════════");
     console.log("                    Nano PoW Benchmark");
@@ -216,7 +282,6 @@ async function runBenchmark() {
     console.log(`Runs per test: ${NUM_RUNS} (work generation is random, multiple runs needed)`);
     console.log();
     
-    // Wait for WASM
     if (!global.Module.ready) {
         process.stdout.write("Initializing WASM...");
         await new Promise(resolve => {
@@ -231,11 +296,20 @@ async function runBenchmark() {
 
     const wasmGetPoW = (hash, threshold) => global.Module.ccall("getProofOfWork", "string", ["string", "string"], [hash, threshold]);
 
-    // Initialize WebGPU
     process.stdout.write("Initializing WebGPU...");
     const webgpuPow = new WebGPUPow();
     await webgpuPow.init();
     console.log(" ✓");
+    
+    const webglAvailable = isBrowser();
+    if (webglAvailable) {
+        process.stdout.write("Initializing WebGL...");
+        const webglPow = new WebGLPow();
+        await webglPow.init();
+        console.log(" ✓");
+    } else {
+        console.log("Initializing WebGL... skipped (Node.js)");
+    }
     console.log();
 
     const testCases = [
@@ -254,9 +328,10 @@ async function runBenchmark() {
         console.log();
 
         const wasmResults = [];
+        const wasmMultiResults = [];
         const gpuResults = [];
+        const webglResults = [];
 
-        // Run WASM benchmarks
         console.log(`  WASM (Single-threaded) - ${NUM_RUNS} runs:`);
         for (let i = 0; i < NUM_RUNS; i++) {
             process.stdout.write(`    Run ${i + 1}/${NUM_RUNS}...`);
@@ -265,7 +340,15 @@ async function runBenchmark() {
             console.log(` ${formatHashRate(result.hashRate)} (${(result.timeMs/1000).toFixed(2)}s, ${formatNumber(result.iterations)} hashes) ${result.valid ? '✓' : '✗'}`);
         }
 
-        // Run WebGPU benchmarks  
+        console.log();
+        console.log(`  WASM (Multi-threaded) - ${NUM_RUNS} runs:`);
+        for (let i = 0; i < NUM_RUNS; i++) {
+            process.stdout.write(`    Run ${i + 1}/${NUM_RUNS}...`);
+            const result = await runWasmMultiThreadedBenchmark(test.hash, test.threshold);
+            wasmMultiResults.push(result);
+            console.log(` ${formatHashRate(result.hashRate)} (${(result.timeMs/1000).toFixed(2)}s, ${formatNumber(result.iterations)} hashes) ${result.valid ? '✓' : '✗'}`);
+        }
+
         console.log();
         console.log(`  WebGPU - ${NUM_RUNS} runs:`);
         for (let i = 0; i < NUM_RUNS; i++) {
@@ -275,7 +358,29 @@ async function runBenchmark() {
             console.log(` ${formatHashRate(result.hashRate)} (${(result.timeMs/1000).toFixed(2)}s, ${formatNumber(result.iterations)} hashes) ${result.valid ? '✓' : '✗'}`);
         }
 
-        // Calculate statistics
+        if (webglAvailable) {
+            console.log();
+            console.log(`  WebGL - ${NUM_RUNS} runs:`);
+            const webglPow = new WebGLPow();
+            await webglPow.init();
+            for (let i = 0; i < NUM_RUNS; i++) {
+                process.stdout.write(`    Run ${i + 1}/${NUM_RUNS}...`);
+                const startTime = Date.now();
+                const nonce = await webglPow.getProofOfWork(test.hash, test.threshold);
+                const timeMs = Date.now() - startTime;
+                const iterations = webglPow.getIterations();
+                const valid = verifyPoW(nonce, test.hash, test.threshold);
+                webglResults.push({
+                    nonce,
+                    iterations,
+                    timeMs,
+                    hashRate: (iterations / timeMs) * 1000,
+                    valid
+                });
+                console.log(` ${formatHashRate((iterations / timeMs) * 1000)} (${(timeMs/1000).toFixed(2)}s, ${formatNumber(iterations)} hashes) ${valid ? '✓' : '✗'}`);
+            }
+        }
+
         const wasmStats = {
             avgHashRate: wasmResults.reduce((s, r) => s + r.hashRate, 0) / wasmResults.length,
             minHashRate: Math.min(...wasmResults.map(r => r.hashRate)),
@@ -283,6 +388,15 @@ async function runBenchmark() {
             avgTime: wasmResults.reduce((s, r) => s + r.timeMs, 0) / wasmResults.length,
             avgIterations: wasmResults.reduce((s, r) => s + r.iterations, 0) / wasmResults.length,
             allValid: wasmResults.every(r => r.valid)
+        };
+
+        const wasmMultiStats = {
+            avgHashRate: wasmMultiResults.reduce((s, r) => s + r.hashRate, 0) / wasmMultiResults.length,
+            minHashRate: Math.min(...wasmMultiResults.map(r => r.hashRate)),
+            maxHashRate: Math.max(...wasmMultiResults.map(r => r.hashRate)),
+            avgTime: wasmMultiResults.reduce((s, r) => s + r.timeMs, 0) / wasmMultiResults.length,
+            avgIterations: wasmMultiResults.reduce((s, r) => s + r.iterations, 0) / wasmMultiResults.length,
+            allValid: wasmMultiResults.every(r => r.valid)
         };
 
         const gpuStats = {
@@ -294,34 +408,70 @@ async function runBenchmark() {
             allValid: gpuResults.every(r => r.valid)
         };
 
+        let webglStats = null;
+        if (webglAvailable && webglResults.length > 0) {
+            webglStats = {
+                avgHashRate: webglResults.reduce((s, r) => s + r.hashRate, 0) / webglResults.length,
+                minHashRate: Math.min(...webglResults.map(r => r.hashRate)),
+                maxHashRate: Math.max(...webglResults.map(r => r.hashRate)),
+                avgTime: webglResults.reduce((s, r) => s + r.timeMs, 0) / webglResults.length,
+                avgIterations: webglResults.reduce((s, r) => s + r.iterations, 0) / webglResults.length,
+                allValid: webglResults.every(r => r.valid)
+            };
+        }
+
         allResults.push({
             threshold: test.threshold,
             type: info.name,
             expectedDifficulty: info.expectedIterations,
             wasm: wasmStats,
+            wasmMulti: wasmMultiStats,
             gpu: gpuStats,
-            speedup: gpuStats.avgHashRate / wasmStats.avgHashRate
+            webgl: webglStats,
+            speedupWasmMulti: wasmMultiStats.avgHashRate / wasmStats.avgHashRate,
+            speedupGpu: gpuStats.avgHashRate / wasmStats.avgHashRate,
+            speedupWebgl: webglStats ? webglStats.avgHashRate / wasmStats.avgHashRate : null
         });
 
         console.log();
     }
 
-    // Summary table
     console.log("═══════════════════════════════════════════════════════════════");
     console.log("                        SUMMARY RESULTS");
     console.log("═══════════════════════════════════════════════════════════════");
     console.log();
-    
-    const tableData = allResults.map(r => ({
-        "Threshold": r.threshold,
-        "Type": r.type,
-        "Difficulty": "~" + formatNumber(r.expectedDifficulty),
-        "WASM Avg": formatHashRate(r.wasm.avgHashRate),
-        "WASM Range": `${formatHashRate(r.wasm.minHashRate)} - ${formatHashRate(r.wasm.maxHashRate)}`,
-        "WebGPU Avg": formatHashRate(r.gpu.avgHashRate),
-        "WebGPU Range": `${formatHashRate(r.gpu.minHashRate)} - ${formatHashRate(r.gpu.maxHashRate)}`,
-        "Speedup": r.speedup.toFixed(1) + "x"
-    }));
+
+    const backends = webglAvailable ? ['WASM', 'WASM (Multi)', 'WebGPU', 'WebGL'] : ['WASM', 'WASM (Multi)', 'WebGPU'];
+    const tableData = [];
+
+    for (let i = 0; i < allResults.length; i++) {
+        const r = allResults[i];
+        for (const backend of backends) {
+            let stats, speedup;
+            if (backend === 'WASM') {
+                stats = r.wasm;
+                speedup = '1.0x';
+            } else if (backend === 'WASM (Multi)') {
+                stats = r.wasmMulti;
+                speedup = r.speedupWasmMulti.toFixed(1) + 'x';
+            } else if (backend === 'WebGPU') {
+                stats = r.gpu;
+                speedup = r.speedupGpu.toFixed(1) + 'x';
+            } else {
+                stats = r.webgl;
+                speedup = r.speedupWebgl ? r.speedupWebgl.toFixed(1) + 'x' : 'N/A';
+            }
+
+            tableData.push({
+                "Implementation": backend,
+                "Threshold": r.threshold,
+                "Type": r.type,
+                "Avg HashRate": stats ? formatHashRate(stats.avgHashRate) : 'N/A',
+                "Range": stats ? `${formatHashRate(stats.minHashRate)} - ${formatHashRate(stats.maxHashRate)}` : 'N/A',
+                "Speedup": speedup
+            });
+        }
+    }
     
     console.table(tableData);
     
@@ -332,6 +482,10 @@ async function runBenchmark() {
     console.log("  - Difficulty = expected hashes needed (random, actual varies)");
     console.log("  - WASM iterations counted as calls × 5M (batch size)");
     console.log("  - WebGPU iterations counted as batches × 1M (dispatch size)");
+    console.log("  - WebGL iterations counted as frames × width × height (512×512)");
+    if (!webglAvailable) {
+        console.log("  - WebGL not available in Node.js (run in browser for full comparison)");
+    }
 }
 
 runBenchmark().catch(console.error);

@@ -4,13 +4,21 @@
 
 ### Overview
 
-This repo contains a simple Nano Currency PoW implementation with **WebAssembly (WASM)** and **WebGPU** support to boost its performance on browsers and Node.js.
+This repo contains a Nano Currency PoW implementation with **WebAssembly (WASM)**, **WebGPU**, and **WebGL** support formaximum performance across all platforms.
 
 For a detailed comparison of the different implementations, see [BACKENDS.md](./BACKENDS.md).
 
 ### Features
-- **WebGPU Acceleration**: Blazing fast PoW calculation using the GPU. Works in browsers and Node.js.
-- **WASM Fallback**: High-performance multi-threaded WASM implementation for environments without WebGPU.
+- **WebGPU Acceleration**: Blazing fast PoW calculation using GPU compute shaders
+- **WebGL Fallback**: GPU acceleration via fragment shaders (browser-only)
+- **WASM Fallback**: High-performance implementation for environments without GPU support
+
+### Fallback Chain
+
+The library automatically selects the best available backend:
+1. **WebGPU** (fastest) - GPU compute shaders
+2. **WebGL** (browser-only) - GPU fragment shaders
+3. **WASM** (universal) - Multi-threaded CPU
 
 ### Usage (Node.js & Modern Browsers)
 
@@ -66,6 +74,29 @@ See the files in the `examples` directory for a full overview.
 ```
 
 If a new threshold is needed in a new version, it can be passed to the function `getProofOfWorkMultiThreaded` as a simple hex string.
+
+### Web Benchmark UI
+
+Compare backend performance in your browser:
+
+```bash
+# Start the benchmark server
+node benchmark-server.js
+
+# Open in browser
+open http://localhost:3000/benchmark.html
+```
+
+**Features:**
+- Start/Stop/Skip controls
+- Per-backend rerun buttons
+- Real-time progress bars
+- Results comparison table
+
+**Requirements:**
+- WebGPU: Chrome 113+ or Firefox with WebGPU enabled
+- WebGL: WebGL2 support (all modern browsers)
+- WASM: Universal support
 
 ### Compiling from source
 

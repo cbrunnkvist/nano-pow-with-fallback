@@ -1,5 +1,6 @@
 import blake from 'blakejs';
 import { WebGPUPow } from '../src/webgpu-pow.js';
+import { PowService, PowBackendName, PowServiceAbortError } from '../src/index.js';
 import { createRequire } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -103,6 +104,8 @@ async function runTests() {
         }
     }
 
+    if (!(await runPowServiceTest())) allPassed = false;
+
     if (allPassed) {
         console.log("\nALL TESTS PASSED ✨");
         process.exit(0);
@@ -110,6 +113,27 @@ async function runTests() {
         console.log("\nSOME TESTS FAILED ⚠️");
         process.exit(1);
     }
+}
+
+async function runPowServiceTest() {
+    const service = new PowService({ disabledBackends: [PowBackendName.WEBGPU, PowBackendName.WEBGL] });
+    await service.ready;
+
+    const quick = await service.getProofOfWork({ hash: testCases[0].hash, threshold: "0000000000000000" });
+    const quickPass = typeof quick.proofOfWork === 'string' && quick.proofOfWork.length === 16;
+    console.log(`\n  PowService quick test: ${quickPass ? '✅ PASS' : '❌ FAIL'}`);
+
+    let cancelPass = false;
+    try {
+        const pending = service.getProofOfWork({ hash: testCases[2].hash, threshold: testCases[2].threshold });
+        service.cancel();
+        await pending;
+        console.log('  PowService cancel test: ❌ FAIL (completed instead of aborting)');
+    } catch (err) {
+        cancelPass = err instanceof PowServiceAbortError;
+        console.log(`  PowService cancel test: ${cancelPass ? '✅ PASS' : '❌ FAIL'}`);
+    }
+    return quickPass && cancelPass;
 }
 
 runTests().catch(e => {

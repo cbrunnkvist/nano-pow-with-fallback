@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",
+    "./pow-service": "./src/pow-service.js",
     "./webgpu": "./src/webgpu-pow.js",
     "./webgl": "./src/webgl-pow.js"
   },

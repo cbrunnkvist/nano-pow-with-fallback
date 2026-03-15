@@ -20,6 +20,26 @@ The library automatically selects the best available backend:
 2. **WebGL** (browser-only) - GPU fragment shaders
 3. **WASM** (universal) - Multi-threaded CPU
 
+### PowService API
+
+For CLI and browser wallets that need a deterministic, configurable, `RPC`-free PoW pipeline, use the `PowService` object. The service picks the fastest available backend once per instance, exposes the selected backend via `powService.backend`, and lets callers disable any subset (but not all) of the built-in providers by passing `disabledBackends: [PowBackendName.WEBGPU, PowBackendName.WEBGL]` to the constructor.
+
+Cancellation is built in via `powService.cancel()` so your caller can abort work generation without knowing which backend is active at runtime.
+
+```javascript
+import { PowService, PowBackendName } from 'nanocurrency-wasm-pow';
+
+const powService = new PowService({ disabledBackends: [PowBackendName.WEBGPU] });
+await powService.ready;
+
+const { backend, proofOfWork } = await powService.getProofOfWork({ hash, threshold });
+console.log(`work found on ${backend}`, proofOfWork);
+
+powService.cancel();
+```
+
+If you only need the default flow, `getProofOfWork()` still exists and reuses a shared `PowService` instance internally.
+
 ### Usage (Node.js & Modern Browsers)
 
 ```javascript

@@ -100,7 +100,7 @@ Compare backend performance in your browser:
 
 ```bash
 # Start the benchmark server
-node benchmark-server.js
+npm run benchmark:web
 
 # Open in browser
 open http://localhost:3000/benchmark.html

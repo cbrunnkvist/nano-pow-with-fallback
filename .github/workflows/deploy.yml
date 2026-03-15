@@ -33,7 +33,7 @@ jobs:
         run: npm ci
 
       - name: Create docs directory
-        run: mkdir -p docs
+        run: mkdir -p docs src
 
       - name: Copy static files
         run: |

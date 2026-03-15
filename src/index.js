@@ -1,5 +1,3 @@
-import { WebGPUPow } from './webgpu-pow.js';
-import { WebGLPow } from './webgl-pow.js';
 import { PowService, PowBackendName } from './pow-service.js';
 
 export const THRESHOLD__SEND_CHANGE = "fffffff800000000";
@@ -16,4 +14,6 @@ export function getPowService() {
   return defaultPowService;
 }
 
-export { WebGPUPow, WebGLPow, PowService, PowBackendName };
+export { WebGPUPow } from './webgpu-pow.js';
+export { WebGLPow } from './webgl-pow.js';
+export { PowService, PowBackendName };

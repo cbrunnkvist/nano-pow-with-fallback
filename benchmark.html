@@ -279,6 +279,11 @@
             font-weight: 600;
         }
         
+        .cell-valid {
+            font-weight: 600;
+            text-align: center;
+        }
+
         .speedup-high {
             color: var(--success);
         }
@@ -461,47 +466,52 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Backend</th>
-                        <th>Avg HashRate</th>
-                        <th>Range</th>
-                        <th>Time</th>
-                        <th>Speedup</th>
-                        <th class="cell-actions">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="resultsBody">
-                    <tr id="row-wasm">
-                        <td class="cell-backend">WASM (1)</td>
-                        <td id="result-wasm-rate">--</td>
-                        <td id="result-wasm-range">--</td>
-                        <td id="result-wasm-time">--</td>
-                        <td class="cell-speedup speedup-low" id="result-wasm-speedup">1.0x</td>
-                        <td class="cell-actions"><button class="btn-icon" onclick="rerunBackend('wasm')" title="Rerun">↻</button></td>
-                    </tr>
-                    <tr id="row-wasm-multi">
-                        <td class="cell-backend">WASM (Multi)</td>
-                        <td id="result-wasm-multi-rate">--</td>
-                        <td id="result-wasm-multi-range">--</td>
-                        <td id="result-wasm-multi-time">--</td>
-                        <td class="cell-speedup" id="result-wasm-multi-speedup">--</td>
-                        <td class="cell-actions"><button class="btn-icon" onclick="rerunBackend('wasm-multi')" title="Rerun">↻</button></td>
-                    </tr>
-                    <tr id="row-webgpu">
-                        <td class="cell-backend">WebGPU</td>
-                        <td id="result-webgpu-rate">--</td>
-                        <td id="result-webgpu-range">--</td>
-                        <td id="result-webgpu-time">--</td>
-                        <td class="cell-speedup" id="result-webgpu-speedup">--</td>
-                        <td class="cell-actions"><button class="btn-icon" onclick="rerunBackend('webgpu')" title="Rerun">↻</button></td>
-                    </tr>
-                    <tr id="row-webgl">
-                        <td class="cell-backend">WebGL</td>
-                        <td id="result-webgl-rate">--</td>
-                        <td id="result-webgl-range">--</td>
-                        <td id="result-webgl-time">--</td>
-                        <td class="cell-speedup" id="result-webgl-speedup">--</td>
-                        <td class="cell-actions"><button class="btn-icon" onclick="rerunBackend('webgl')" title="Rerun">↻</button></td>
-                    </tr>
+                    <th>Backend</th>
+                    <th>Avg HashRate</th>
+                    <th>Range</th>
+                    <th>Time</th>
+                    <th>Valid block</th>
+                    <th>Speedup</th>
+                    <th class="cell-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="resultsBody">
+                <tr id="row-wasm">
+                    <td class="cell-backend">WASM (1)</td>
+                    <td id="result-wasm-rate">--</td>
+                    <td id="result-wasm-range">--</td>
+                    <td id="result-wasm-time">--</td>
+                    <td id="result-wasm-valid" class="cell-valid">--</td>
+                    <td class="cell-speedup speedup-low" id="result-wasm-speedup">1.0x</td>
+                    <td class="cell-actions"><button class="btn-icon" onclick="rerunBackend('wasm')" title="Rerun">↻</button></td>
+                </tr>
+                <tr id="row-wasm-multi">
+                    <td class="cell-backend">WASM (Multi)</td>
+                    <td id="result-wasm-multi-rate">--</td>
+                    <td id="result-wasm-multi-range">--</td>
+                    <td id="result-wasm-multi-time">--</td>
+                    <td id="result-wasm-multi-valid" class="cell-valid">--</td>
+                    <td class="cell-speedup" id="result-wasm-multi-speedup">--</td>
+                    <td class="cell-actions"><button class="btn-icon" onclick="rerunBackend('wasm-multi')" title="Rerun">↻</button></td>
+                </tr>
+                <tr id="row-webgpu">
+                    <td class="cell-backend">WebGPU</td>
+                    <td id="result-webgpu-rate">--</td>
+                    <td id="result-webgpu-range">--</td>
+                    <td id="result-webgpu-time">--</td>
+                    <td id="result-webgpu-valid" class="cell-valid">--</td>
+                    <td class="cell-speedup" id="result-webgpu-speedup">--</td>
+                    <td class="cell-actions"><button class="btn-icon" onclick="rerunBackend('webgpu')" title="Rerun">↻</button></td>
+                </tr>
+                <tr id="row-webgl">
+                    <td class="cell-backend">WebGL</td>
+                    <td id="result-webgl-rate">--</td>
+                    <td id="result-webgl-range">--</td>
+                    <td id="result-webgl-time">--</td>
+                    <td id="result-webgl-valid" class="cell-valid">--</td>
+                    <td class="cell-speedup" id="result-webgl-speedup">--</td>
+                    <td class="cell-actions"><button class="btn-icon" onclick="rerunBackend('webgl')" title="Rerun">↻</button></td>
+                </tr>
                 </tbody>
             </table>
         </div>
@@ -511,6 +521,7 @@
             <ul>
                 <li>Hash rate = hashes computed per second (higher is better)</li>
                 <li>Speedup compares each backend to WASM (1) baseline</li>
+                <li>Valid block column repeats an official nanocurrency.validateWork check for each backend</li>
                 <li>WASM uses CPU computation (Single-threaded vs Multi-threaded)</li>
                 <li>WebGPU uses GPU compute shaders (fastest)</li>
                 <li>WebGL uses GPU fragment shaders (browser-only)</li>
@@ -528,6 +539,7 @@
     <script type="module">
         import { WebGPUPow } from './src/webgpu-pow.js';
         import { WebGLPow } from './src/webgl-pow.js';
+        import { validateWork } from './node_modules/nanocurrency/dist/nanocurrency.esm.js';
         
         // State
         let isRunning = false;
@@ -642,6 +654,26 @@
             if (ms >= 1000) return (ms / 1000).toFixed(2) + 's';
             return ms.toFixed(0) + 'ms';
         }
+
+        function checkWorkValidity(work, threshold) {
+            if (!work) return false;
+            try {
+                return validateWork({
+                    blockHash: TEST_HASH,
+                    work,
+                    threshold
+                });
+            } catch (err) {
+                console.error('validateWork failed:', err);
+                return false;
+            }
+        }
+
+        function formatValidity(valid) {
+            if (valid === true) return '✅';
+            if (valid === false) return '❌';
+            return '—';
+        }
         
         function updateProgress(backend, percent, text) {
             const item = document.getElementById(`progress-${backend}`);
@@ -672,6 +704,7 @@
             document.getElementById(`result-${backend}-range`).textContent = 
                 `${formatHashRate(data.minHashRate)} - ${formatHashRate(data.maxHashRate)}`;
             document.getElementById(`result-${backend}-time`).textContent = formatTime(data.avgTime);
+            document.getElementById(`result-${backend}-valid`).textContent = formatValidity(data.valid);
             
             // Update speedup
             if (results.wasm && backend !== 'wasm') {
@@ -719,21 +752,25 @@
                 const timeMs = performance.now() - startTime;
                 
                 const iterations = (calls || 1) * WASM_ITERATIONS_PER_CALL;
+                const valid = checkWorkValidity(proofOfWork, threshold);
                 
                 runResults.push({
                     iterations,
                     timeMs,
-                    hashRate: (iterations / timeMs) * 1000
+                    hashRate: (iterations / timeMs) * 1000,
+                    valid
                 });
             }
             
             onProgress(100, 'Complete');
             
+            const allValid = runResults.length > 0 && runResults.every(r => r.valid);
             return {
                 avgHashRate: runResults.reduce((s, r) => s + r.hashRate, 0) / runResults.length,
                 minHashRate: Math.min(...runResults.map(r => r.hashRate)),
                 maxHashRate: Math.max(...runResults.map(r => r.hashRate)),
-                avgTime: runResults.reduce((s, r) => s + r.timeMs, 0) / runResults.length
+                avgTime: runResults.reduce((s, r) => s + r.timeMs, 0) / runResults.length,
+                valid: allValid
             };
         }
 
@@ -765,21 +802,25 @@
                 
                 // Now 'calls' is already the sum of all threads
                 const totalIterations = calls * WASM_ITERATIONS_PER_CALL; 
+                const valid = checkWorkValidity(proofOfWork, threshold);
                 
                 runResults.push({
                     iterations: totalIterations,
                     timeMs,
-                    hashRate: (totalIterations / timeMs) * 1000
+                    hashRate: (totalIterations / timeMs) * 1000,
+                    valid
                 });
             }
             
             onProgress(100, 'Complete');
+            const allValid = runResults.length > 0 && runResults.every(r => r.valid);
             
             return {
                 avgHashRate: runResults.reduce((s, r) => s + r.hashRate, 0) / runResults.length,
                 minHashRate: Math.min(...runResults.map(r => r.hashRate)),
                 maxHashRate: Math.max(...runResults.map(r => r.hashRate)),
-                avgTime: runResults.reduce((s, r) => s + r.timeMs, 0) / runResults.length
+                avgTime: runResults.reduce((s, r) => s + r.timeMs, 0) / runResults.length,
+                valid: allValid
             };
         }
         async function runWebGpuBenchmark(threshold, runs, onProgress) {
@@ -804,21 +845,25 @@
                 const iterations = WEBGPU_ITERATIONS_PER_BATCH; 
                 
                 const timeMs = performance.now() - startTime;
+                const valid = checkWorkValidity(nonce, threshold);
                 
                 runResults.push({
                     iterations,
                     timeMs,
-                    hashRate: (iterations / timeMs) * 1000
+                    hashRate: (iterations / timeMs) * 1000,
+                    valid
                 });
             }
             
             onProgress(100, 'Complete');
-            
+            const allValid = runResults.length > 0 && runResults.every(r => r.valid);
+
             return {
                 avgHashRate: runResults.reduce((s, r) => s + r.hashRate, 0) / runResults.length,
                 minHashRate: Math.min(...runResults.map(r => r.hashRate)),
                 maxHashRate: Math.max(...runResults.map(r => r.hashRate)),
-                avgTime: runResults.reduce((s, r) => s + r.timeMs, 0) / runResults.length
+                avgTime: runResults.reduce((s, r) => s + r.timeMs, 0) / runResults.length,
+                valid: allValid
             };
         }
         
@@ -844,21 +889,25 @@
                 const iterations = webglPow.getIterations();
                 
                 const timeMs = performance.now() - startTime;
+                const valid = checkWorkValidity(nonce, threshold);
                 
                 runResults.push({
                     iterations,
                     timeMs,
-                    hashRate: (iterations / timeMs) * 1000
+                    hashRate: (iterations / timeMs) * 1000,
+                    valid
                 });
             }
             
             onProgress(100, 'Complete');
-            
+            const allValid = runResults.length > 0 && runResults.every(r => r.valid);
+
             return {
                 avgHashRate: runResults.reduce((s, r) => s + r.hashRate, 0) / runResults.length,
                 minHashRate: Math.min(...runResults.map(r => r.hashRate)),
                 maxHashRate: Math.max(...runResults.map(r => r.hashRate)),
-                avgTime: runResults.reduce((s, r) => s + r.timeMs, 0) / runResults.length
+                avgTime: runResults.reduce((s, r) => s + r.timeMs, 0) / runResults.length,
+                valid: allValid
             };
         }
         

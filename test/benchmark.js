@@ -1,9 +1,9 @@
-import blake from 'blakejs';
 import { WebGPUPow } from '../src/webgpu-pow.js';
 import { WebGLPow } from '../src/webgl-pow.js';
 import { createRequire } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { validateWork } from 'nanocurrency';
 import { Worker } from 'node:worker_threads';
 
 const require = createRequire(import.meta.url);
@@ -19,23 +19,19 @@ const THRESHOLD_INFO = {
     "fffffff800000000": { name: "Send/Change", expectedIterations: 8_388_608 }
 };
 
-function hexToBytes(hex) {
-    return new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-}
+function validateNanoWork(nonceHex, hashHex, thresholdHex) {
+    if (!nonceHex || nonceHex === '0000000000000000') return false;
 
-function verifyPoW(nonceHex, hashHex, thresholdHex) {
-    const nonceBytes = hexToBytes(nonceHex).reverse();
-    const hashBytes = hexToBytes(hashHex);
-    const input = new Uint8Array(40);
-    input.set(nonceBytes, 0);
-    input.set(hashBytes, 8);
-
-    const digest = blake.blake2b(input, null, 8);
-    const digestView = new DataView(digest.buffer);
-    const outputBigInt = BigInt(digestView.getUint32(0, true)) + (BigInt(digestView.getUint32(4, true)) << 32n);
-    const thresholdBigInt = BigInt("0x" + thresholdHex);
-
-    return outputBigInt > thresholdBigInt;
+    try {
+        return validateWork({
+            work: nonceHex,
+            blockHash: hashHex,
+            threshold: thresholdHex
+        });
+    } catch (err) {
+        console.error('validateWork failed:', err);
+        return false;
+    }
 }
 
 function formatNumber(num) {
@@ -76,7 +72,7 @@ async function runWasmBenchmark(wasmGetPoW, hash, threshold) {
         iterations,
         timeMs,
         hashRate: (iterations / timeMs) * 1000,
-        valid: verifyPoW(nonce, hash, threshold)
+        valid: validateNanoWork(nonce, hash, threshold)
     };
 }
 
@@ -207,7 +203,7 @@ async function runGpuBenchmark(webgpuPow, hash, threshold) {
         iterations,
         timeMs,
         hashRate: (iterations / timeMs) * 1000,
-        valid: verifyPoW(nonce, hash, threshold)
+        valid: validateNanoWork(nonce, hash, threshold)
     };
 }
 
@@ -225,6 +221,7 @@ async function runWasmMultiThreadedBenchmark(hash, threshold) {
         let resolved = false;
         let totalCalls = 0;
         let finishedWorkers = 0;
+        let winnerProof = null;
 
         const cleanup = () => {
             for (const w of workers) w.terminate();
@@ -243,6 +240,7 @@ async function runWasmMultiThreadedBenchmark(hash, threshold) {
                     
                     if (data.message === 'success' && !resolved) {
                         resolved = true;
+                        winnerProof = data.proofOfWork;
                         // Tell all other workers to stop and report their calls
                         for (const w of workers) {
                             if (w !== worker) w.postMessage({ command: 'stop' });
@@ -252,12 +250,13 @@ async function runWasmMultiThreadedBenchmark(hash, threshold) {
                     if (finishedWorkers === numWorkers) {
                         const timeMs = Date.now() - startTime;
                         const totalIterations = totalCalls * WASM_ITERATIONS_PER_CALL;
+                        const proofOfWork = winnerProof || data.proofOfWork || '0000000000000000';
                         resolve({
-                            nonce: data.proofOfWork, // Use winner's nonce
+                            nonce: proofOfWork,
                             iterations: totalIterations,
                             timeMs,
                             hashRate: (totalIterations / timeMs) * 1000,
-                            valid: true // Assume valid for winner
+                            valid: validateNanoWork(proofOfWork, hash, threshold)
                         });
                         cleanup();
                     }
@@ -369,7 +368,7 @@ async function runBenchmark() {
                 const nonce = await webglPow.getProofOfWork(test.hash, test.threshold);
                 const timeMs = Date.now() - startTime;
                 const iterations = webglPow.getIterations();
-                const valid = verifyPoW(nonce, test.hash, test.threshold);
+                const valid = validateNanoWork(nonce, test.hash, test.threshold);
                 webglResults.push({
                     nonce,
                     iterations,
@@ -468,6 +467,7 @@ async function runBenchmark() {
                 "Type": r.type,
                 "Avg HashRate": stats ? formatHashRate(stats.avgHashRate) : 'N/A',
                 "Range": stats ? `${formatHashRate(stats.minHashRate)} - ${formatHashRate(stats.maxHashRate)}` : 'N/A',
+                "Valid block": stats ? (stats.allValid ? '✅' : '❌') : 'N/A',
                 "Speedup": speedup
             });
         }
@@ -483,6 +483,7 @@ async function runBenchmark() {
     console.log("  - WASM iterations counted as calls × 5M (batch size)");
     console.log("  - WebGPU iterations counted as batches × 1M (dispatch size)");
     console.log("  - WebGL iterations counted as frames × width × height (512×512)");
+    console.log("  - Valid block indicators use nanocurrency.validateWork for each backend result.");
     if (!webglAvailable) {
         console.log("  - WebGL not available in Node.js (run in browser for full comparison)");
     }

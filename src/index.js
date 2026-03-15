@@ -1,4 +1,4 @@
-import { PowService, PowBackendName } from './pow-service.js';
+import { PowService, PowBackendName, PowServiceAbortError } from './pow-service.js';
 
 export const THRESHOLD__SEND_CHANGE = "fffffff800000000";
 export const THRESHOLD__OPEN_RECEIVE = "fffffe0000000000";
@@ -16,4 +16,4 @@ export function getPowService() {
 
 export { WebGPUPow } from './webgpu-pow.js';
 export { WebGLPow } from './webgl-pow.js';
-export { PowService, PowBackendName };
+export { PowService, PowBackendName, PowServiceAbortError };

@@ -12,6 +12,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const wasmModulePath = path.join(__dirname, '../nano-pow/nano-pow-node.cjs');
 const Module = require(wasmModulePath);
 
+const TEST_CASES = [
+    { 
+        name: "Low Difficulty (Instant)", 
+        threshold: "0000000000000000", 
+        hash: "0000000000000000000000000000000000000000000000000000000000000000" 
+    },
+    { 
+        name: "Normal - Open/Receive", 
+        threshold: "fffffe0000000000", 
+        hash: "BD9F737DDECB0A34DFBA0EDF7017ACB0EF0AA04A6F7A73A406191EF80BB20000" 
+    },
+    { 
+        name: "Normal - Send/Change", 
+        threshold: "fffffff800000000", 
+        hash: "BD9F737DDECB0A34DFBA0EDF7017ACB0EF0AA04A6F7A73A406191EF80BB20000" 
+    }
+];
+
 function hexToBytes(hex) {
     if (!hex) return new Uint8Array(0);
     const matches = hex.match(/.{1,2}/g);
@@ -60,24 +78,7 @@ async function runTests() {
         console.warn("WebGPU not supported, skipping WebGPU tests");
     }
 
-    const testCases = [
-        { 
-            name: "Low Difficulty (Instant)", 
-            threshold: "0000000000000000", 
-            hash: "0000000000000000000000000000000000000000000000000000000000000000" 
-        },
-        { 
-            name: "Normal - Open/Receive", 
-            threshold: "fffffe0000000000", 
-            hash: "BD9F737DDECB0A34DFBA0EDF7017ACB0EF0AA04A6F7A73A406191EF80BB20000" 
-        },
-        { 
-            name: "Normal - Send/Change", 
-            threshold: "fffffff800000000", 
-            hash: "BD9F737DDECB0A34DFBA0EDF7017ACB0EF0AA04A6F7A73A406191EF80BB20000" 
-        }
-    ];
-
+    const testCases = TEST_CASES;
     let allPassed = true;
 
     for (const test of testCases) {
@@ -87,7 +88,7 @@ async function runTests() {
         let wasmNonce = wasmGetPoW(test.hash, test.threshold);
         // WASM might need multiple tries if it failed the 5M iterations
         let tries = 0;
-        while (wasmNonce === "0000000000000000" && tries < 50) {
+        while (wasmNonce === "0000000000000000" && tries < 200) {
             wasmNonce = wasmGetPoW(test.hash, test.threshold);
             tries++;
         }
@@ -119,13 +120,13 @@ async function runPowServiceTest() {
     const service = new PowService({ disabledBackends: [PowBackendName.WEBGPU, PowBackendName.WEBGL] });
     await service.ready;
 
-    const quick = await service.getProofOfWork({ hash: testCases[0].hash, threshold: "0000000000000000" });
+    const quick = await service.getProofOfWork({ hash: TEST_CASES[0].hash, threshold: "0000000000000000" });
     const quickPass = typeof quick.proofOfWork === 'string' && quick.proofOfWork.length === 16;
     console.log(`\n  PowService quick test: ${quickPass ? '✅ PASS' : '❌ FAIL'}`);
 
     let cancelPass = false;
     try {
-        const pending = service.getProofOfWork({ hash: testCases[2].hash, threshold: testCases[2].threshold });
+        const pending = service.getProofOfWork({ hash: TEST_CASES[2].hash, threshold: TEST_CASES[2].threshold });
         service.cancel();
         await pending;
         console.log('  PowService cancel test: ❌ FAIL (completed instead of aborting)');

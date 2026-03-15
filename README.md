@@ -1,6 +1,6 @@
 - Forked from [jaimehgb/RaiBlocksWebAssemblyPoW](https://github.com/jaimehgb/RaiBlocksWebAssemblyPoW)
 
-## nanocurrency-wasm-pow
+## nano-pow-with-fallback
 
 ### Overview
 
@@ -12,6 +12,7 @@ For a detailed comparison of the different implementations, see [BACKENDS.md](./
 - **WebGPU Acceleration**: Blazing fast PoW calculation using GPU compute shaders
 - **WebGL Fallback**: GPU acceleration via fragment shaders (browser-only)
 - **WASM Fallback**: High-performance implementation for environments without GPU support
+- **Official validation**: CLI and browser benchmarks call `nanocurrency.validateWork` so every backend run reports whether its block+work pair is valid via the new `Valid block` indicator.
 
 ### Fallback Chain
 
@@ -27,7 +28,7 @@ For CLI and browser wallets that need a deterministic, configurable, `RPC`-free 
 Cancellation is built in via `powService.cancel()` so your caller can abort work generation without knowing which backend is active at runtime.
 
 ```javascript
-import { PowService, PowBackendName } from 'nanocurrency-wasm-pow';
+import { PowService, PowBackendName } from 'nano-pow-with-fallback';
 
 const powService = new PowService({ disabledBackends: [PowBackendName.WEBGPU] });
 await powService.ready;
@@ -43,7 +44,7 @@ If you only need the default flow, `getProofOfWork()` still exists and reuses a 
 ### Usage (Node.js & Modern Browsers)
 
 ```javascript
-import { getProofOfWork, THRESHOLD__OPEN_RECEIVE } from 'nanocurrency-wasm-pow';
+import { getProofOfWork, THRESHOLD__OPEN_RECEIVE } from 'nano-pow-with-fallback';
 
 const hash = "BD9F737DDECB0A34DFBA0EDF7017ACB0EF0AA04A6F7A73A406191EF80BB20000";
 const proofOfWork = await getProofOfWork({
@@ -112,6 +113,7 @@ open http://localhost:3000/benchmark.html
 - Per-backend rerun buttons
 - Real-time progress bars
 - Results comparison table
+- Valid block column that mirrors the CLI output by running `nanocurrency.validateWork` for each backend result.
 
 **Requirements:**
 - WebGPU: Chrome 113+ or Firefox with WebGPU enabled
@@ -140,9 +142,13 @@ It will output 2 files: `nano-pow.js` and `nano-pow.wasm`. To get directions on 
 ### Testing
 
 - `npm test` runs `test/unit-tests.js` (WASM, WebGPU, `PowService`).
-- `npm run benchmark:node` (`test/benchmark.js`) exercises WASM, multi-threaded WASM, and WebGPU stats.
-- `npm run benchmark:web` or `node benchmark-server.js` + `open http://localhost:3000/benchmark.html` launches the interactive UI.
+- `npm run benchmark:node` (`test/benchmark.js`) exercises WASM, multi-threaded WASM, and WebGPU stats while displaying a `Valid block` column that comes from `nanocurrency.validateWork`.
+- `npm run benchmark:web` or `node benchmark-server.js` + `open http://localhost:3000/benchmark.html` launches the interactive UI, which mirrors the CLI table and shows the same validation badge for each backend.
 - `npm run test:e2e` / `npm run test:e2e:watch` execute the Playwright suite in `tests/benchmark.spec.js` against the UI.
+
+### Related packages
+
+- [`nano-pow`](https://www.npmjs.com/package/nano-pow) (v5.1.10) also bundles WebGPU, WebGL, and WASM proof-of-work generators with validation/shading fallbacks for Nano and publishes CLI/server binaries, so we position `nano-pow-with-fallback` as the programmable PoW service that ties them together with cancellation, discovery, and documented fallbacks.
 
 
 ### Additional help

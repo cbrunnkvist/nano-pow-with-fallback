@@ -1,5 +1,5 @@
 {
-  "name": "nanocurrency-wasm-pow",
+  "name": "nano-pow-with-fallback",
   "version": "1.0.0",
   "description": "Nano Currency PoW implementation with WASM, WebGPU, and WebGL backends",
   "main": "src/index.js",
@@ -25,6 +25,7 @@
   "dependencies": {
     "@sylphx/webgpu": "^1.0.4",
     "blakejs": "^1.2.1",
+    "nanocurrency": "^2.5.0",
     "webgpu": "^0.1.0"
   },
   "type": "module"

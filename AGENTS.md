@@ -1,52 +1,23 @@
-# nanocurrency-wasm-pow
+# nano-pow-with-fallback
 
-High-performance Nano Currency Proof of Work (PoW) implementation supporting multiple backends: WebGPU, WebGL, and WebAssembly (WASM).
+The README is the canonical reference for the project overview, npm package exports, benchmarks, and the CLI/web instructions that the repo is supposed to deliver. This AGENTS file keeps a slim set of stable implementation cues that are useful to know when touching the PoW stack without re-stating every command.
 
-## Project Overview
-- **Backends:**
-  - **WebGPU:** Modern GPU compute shaders (fastest). Works in Node.js via `@sylphx/webgpu` and in modern browsers (Chrome 113+).
-  - **WebGL:** GPU fragment shaders. Browser-only fallback for older GPUs.
-  - **WASM:** CPU implementation compiled from C++. Supports single-threaded and multi-threaded (Worker-based) execution.
-- **Project Structure:**
-  - `src/`: Core backend implementations and main entry point.
-  - `nano-pow/`: WASM binary, wrapper, and worker scripts.
-  - `test/`: CLI benchmark and unit tests.
-  - `tests/`: Playwright E2E tests for the web interface.
-  - `benchmark.html`: Browser-based UI for benchmarking and comparison.
+## Pocket context
+- Core backends: WebGPU, WebGL, and WASM (single-threaded + worker-based multi-threaded). This matches the README overview.
+- `nano-pow/` holds the Emscripten-generated wasm/worker outputs referenced by multiple scripts.
 
-## Building and Running
+## Extension & naming persistence
+- `package.json` is `"type": "module"`, so the Emscripten output must stay as `.cjs` while browsers/workers expect `.js`. The build script writes `nano-pow/nano-pow.cjs` and keeps `nano-pow.js` as a symlink. Do not rename those files.
 
-### Prerequisites
-- [Emscripten](https://emscripten.org/) (only needed for recompiling WASM).
-- Node.js 16+ (uses ESM).
+## Parallelism & multithreading
+- Browser multi-threading is driven by `navigator.hardwareConcurrency` (default `cores - 1`).
+- Node.js multi-threading is driven by `os.cpus()` (default `cores - 1`).
+- Worker threads are used via `worker_threads` on Node and Web Workers in the browser; expect the thread count configuration to remain consistent across runs.
 
-### Commands
-- **Install Dependencies:** `npm install`
-- **Compile WASM:** `sh compile.sh` (Compiles `nano-pow.cpp` to `nano-pow/nano-pow.cjs`).
-- **Start Web Benchmark:** `npm run benchmark:web` (Starts server at `http://localhost:3000`).
-- **Run CLI Benchmark:** `npm run benchmark:node` (Tests WASM and WebGPU in Node.js).
-- **Run E2E Tests:** `npm run test:e2e` (Requires Playwright and `.env` configuration).
-- **Interactive E2E Tests:** `npm run test:e2e:watch` (Playwright UI mode).
+## Testing notes
+- `npm test` drives the unit tests (`test/unit-tests.js`). `npm run benchmark:node` and `npm run benchmark:web` exercise the CLI and the UI, both of which now report a `Valid block` column powered by `nanocurrency.validateWork`.
+- Playwright E2E tests live under `tests/benchmark.spec.js`, so `npm run test:e2e` / `npm run test:e2e:watch` depend on Playwright plus the local `.env` variables (see `.env.example`). The suite uses the `list` reporter to keep terminal noise low.
 
-## Development Conventions
-
-### Extension & Naming Persistence
-- **The .js/.cjs Ping-Pong Solution:** 
-  - `package.json` specifies `"type": "module"`.
-  - Node.js requires `.cjs` for the Emscripten-generated file to support internal `require()` calls.
-  - Browsers/Workers often expect `.js`.
-  - **Standard:** `compile.sh` outputs to `nano-pow.cjs`. A symlink `nano-pow.js -> nano-pow.cjs` exists in the `nano-pow/` directory to satisfy all environments. **Do not rename these files manually.**
-
-### Parallelism
-- **Browser:** Detected via `navigator.hardwareConcurrency`. Default is `cores - 1`.
-- **Node.js:** Detected via `os.cpus()`. Default is `cores - 1`.
-- **Multi-threading:** Implemented via Web Workers in the browser and `worker_threads` in Node.js.
-
-### Testing
-- **E2E Tests:** Use Playwright. Configured in `playwright.config.js`.
-- **Environment Variables:** Local developer settings (like `CHROME_BIN` for Brave Browser) should be placed in a `.env` file (see `.env.example`). `.env` is ignored by git.
-- **Reporting:** Default `test:e2e` uses the `list` reporter for clean CLI output.
-
-### WebGPU / WebGL Logic
-- **Shader Loading:** `src/webgpu-pow.js` handles both browser (`fetch`) and Node.js (`fs`) environments for loading `.wgsl` shaders.
-- **64-bit Comparison:** WebGL backends use a split high/low 32-bit comparison to handle the 64-bit Nano threshold without overflow in GLSL ES 3.0.
+## WebGPU & WebGL logic
+- `src/webgpu-pow.js` loads `.wgsl` shaders via `fetch` in the browser and `fs` in Node so the same code can run in both contexts.
+- WebGL shader math is split into high/low 32-bit comparisons to handle 64-bit Nano threshold checks without GLSL overflow.

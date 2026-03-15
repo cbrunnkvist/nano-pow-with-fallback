@@ -1,10 +1,8 @@
-- Forked from [jaimehgb/RaiBlocksWebAssemblyPoW](https://github.com/jaimehgb/RaiBlocksWebAssemblyPoW)
-
 ## nano-pow-with-fallback
 
 ### Overview
 
-This repo contains a Nano Currency PoW implementation with **WebAssembly (WASM)**, **WebGPU**, and **WebGL** support formaximum performance across all platforms.
+This repo contains a Nano Currency PoW implementation with **WebAssembly (WASM)**, **WebGPU**, and **WebGL** support for maximum performance across all platforms, plus a practical benchmark runner for CLI and web. Check it out: 
 
 For a detailed comparison of the different implementations, see [BACKENDS.md](./BACKENDS.md).
 
@@ -159,3 +157,7 @@ There are more docs about the emscripten itself [here](http://kripken.github.io/
 
 This implementation has just been tested in Chrome (Windows 64bit), Firefox (Windows 64bit) and Chrome (Android) but should also work in
 all the [devices supporting WASM](https://developer.mozilla.org/en-US/docs/WebAssembly#Browser_compatibility).
+
+### Acknowledgements
+
+Forked from [jaimehgb/RaiBlocksWebAssemblyPoW](https://github.com/jaimehgb/RaiBlocksWebAssemblyPoW) and inspired by [nanocurrency/nano-work-server](https://github.com/nanocurrency/nano-work-server) and [Codecow's nano-pow](https://www.npmjs.com/package/nano-pow).

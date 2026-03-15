@@ -15,7 +15,7 @@ The README is the canonical reference for the project overview, npm package expo
 - Worker threads are used via `worker_threads` on Node and Web Workers in the browser; expect the thread count configuration to remain consistent across runs.
 
 ## Testing notes
-- `npm test` drives the unit tests (`test/unit-tests.js`). `npm run benchmark:node` and `npm run benchmark:web` exercise the CLI and the UI, both of which now report a `Valid block` column powered by `nanocurrency.validateWork`.
+- `npm test` drives the unit tests (`test/unit-tests.js`). `npm run benchmark:node` and `npm run benchmark:web` exercise the CLI and the UI. The Node CLI uses `nanocurrency.validateWork` for the `Valid block` column; the browser page runs the same reference check locally.
 - Playwright E2E tests live under `tests/benchmark.spec.js`, so `npm run test:e2e` / `npm run test:e2e:watch` depend on Playwright plus the local `.env` variables (see `.env.example`). The suite uses the `list` reporter to keep terminal noise low.
 
 ## WebGPU & WebGL logic

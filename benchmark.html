@@ -521,7 +521,7 @@
             <ul>
                 <li>Hash rate = hashes computed per second (higher is better)</li>
                 <li>Speedup compares each backend to WASM (1) baseline</li>
-                <li>Valid block column repeats an official nanocurrency.validateWork check for each backend</li>
+                <li>Valid block column runs a reference Nano PoW validation check for each backend</li>
                 <li>WASM uses CPU computation (Single-threaded vs Multi-threaded)</li>
                 <li>WebGPU uses GPU compute shaders (fastest)</li>
                 <li>WebGL uses GPU fragment shaders (browser-only)</li>
@@ -539,7 +539,7 @@
     <script type="module">
         import { WebGPUPow } from './src/webgpu-pow.js';
         import { WebGLPow } from './src/webgl-pow.js';
-        import { validateWork } from './node_modules/nanocurrency/dist/nanocurrency.esm.js';
+        import { validateWork } from './src/validate-work.js';
         
         // State
         let isRunning = false;

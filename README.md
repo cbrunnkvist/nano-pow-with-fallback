@@ -10,7 +10,7 @@ For a detailed comparison of the different implementations, see [BACKENDS.md](./
 - **WebGPU Acceleration**: Blazing fast PoW calculation using GPU compute shaders
 - **WebGL Fallback**: GPU acceleration via fragment shaders (browser-only)
 - **WASM Fallback**: High-performance implementation for environments without GPU support
-- **Official validation**: CLI and browser benchmarks call `nanocurrency.validateWork` so every backend run reports whether its block+work pair is valid via the new `Valid block` indicator.
+- **Work validation**: Benchmarks report whether the block+work pair is valid via the `Valid block` indicator (Node CLI uses `nanocurrency.validateWork`; the browser page uses the same reference algorithm locally).
 
 ### Fallback Chain
 
@@ -111,7 +111,7 @@ open http://localhost:3000/benchmark.html
 - Per-backend rerun buttons
 - Real-time progress bars
 - Results comparison table
-- Valid block column that mirrors the CLI output by running `nanocurrency.validateWork` for each backend result.
+- Valid block column that mirrors the CLI output by running the reference validation check for each backend result.
 
 **Requirements:**
 - WebGPU: Chrome 113+ or Firefox with WebGPU enabled

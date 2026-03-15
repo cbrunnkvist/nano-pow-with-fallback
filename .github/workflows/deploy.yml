@@ -45,18 +45,10 @@ jobs:
           cp src/webgl-pow.js docs/src/
           cp src/index.js docs/src/
           cp src/pow-service.js docs/src/
+          cp src/blake2-util.js docs/src/
+          cp src/blake2b.js docs/src/
+          cp src/validate-work.js docs/src/
           cp src/pow.wgsl docs/src/
-
-      - name: Copy nanocurrency module
-        run: |
-          mkdir -p docs/node_modules/nanocurrency/dist
-          cp node_modules/nanocurrency/dist/nanocurrency.esm.js docs/node_modules/nanocurrency/dist/
-
-      - name: Fix paths in benchmark.html
-        run: |
-          sed -i 's|"./nano-pow/|"/nano-pow/|g' docs/benchmark.html
-          sed -i 's|"./src/|"/src/|g' docs/benchmark.html
-          sed -i 's|"./node_modules/|"/node_modules/|g' docs/benchmark.html
 
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3

@@ -63,19 +63,15 @@ export class PowService {
     if (!hash || hash.length !== 64) {
       throw new Error('hash must be a 64-character hex string');
     }
-    await this.ready;
-    if (!this._selectedBackend) {
-      throw new Error('PoW backend was not initialized');
-    }
-    if (this._currentTask) {
-      throw new Error('A PoW operation is already running');
-    }
 
+    // Set up cancel hook BEFORE the first await to ensure it's available
     let cancelHook = null;
+    let cancelled = false;
     const cancelPromise = new Promise((_, reject) => {
       cancelHook = () => {
+        cancelled = true;
         try {
-          this._selectedBackend.cancel?.();
+          this._selectedBackend?.cancel?.();
         } catch (err) {
           // swallow
         }
@@ -84,7 +80,19 @@ export class PowService {
       this._currentCancel = cancelHook;
     });
 
+    await this.ready;
+    if (!this._selectedBackend) {
+      throw new Error('PoW backend was not initialized');
+    }
+    if (this._currentTask) {
+      throw new Error('A PoW operation is already running');
+    }
+
     const backendPromise = (async () => {
+      // Yield to allow cancel() to be queued and executed
+      await new Promise(r => setTimeout(r, 0));
+      if (cancelled) throw new PowServiceAbortError();
+
       const result = await this._selectedBackend.getProofOfWork({ hash, threshold });
       return this._normalizeResult(this._selectedBackend.name, result);
     })();

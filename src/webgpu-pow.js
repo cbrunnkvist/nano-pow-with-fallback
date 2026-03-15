@@ -27,10 +27,14 @@ async function getGpu() {
                 INDIRECT: 0x0100,
                 QUERY_RESOLVE: 0x0200,
             };
-            globalThis.GPUMapMode = GPUMapMode || {
-                READ: 0x0001,
-                WRITE: 0x0002,
-            };
+            if (GPUMapMode && typeof GPUMapMode.READ !== 'undefined') {
+                globalThis.GPUMapMode = GPUMapMode;
+            } else {
+                globalThis.GPUMapMode = {
+                    READ: 0x0001,
+                    WRITE: 0x0002,
+                };
+            }
         } catch (e) {
             console.error("Failed to load @sylphx/webgpu:", e);
             throw new Error("WebGPU not supported in this environment");
@@ -216,7 +220,7 @@ export class WebGPUPow {
             commandEncoder.copyBufferToBuffer(resultBuffer, 0, stagingBuffer, 0, 16);
             this.device.queue.submit([commandEncoder.finish()]);
 
-            await stagingBuffer.mapAsync(GPUMapMode.READ);
+            await stagingBuffer.mapAsync("READ");
             const arrayBuffer = stagingBuffer.getMappedRange();
             const resultArray = new Uint32Array(arrayBuffer);
             

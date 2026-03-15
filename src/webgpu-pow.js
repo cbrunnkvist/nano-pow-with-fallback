@@ -211,7 +211,11 @@ export class WebGPUPow {
             commandEncoder.copyBufferToBuffer(resultBuffer, 0, stagingBuffer, 0, 16);
             this.device.queue.submit([commandEncoder.finish()]);
 
-            await stagingBuffer.mapAsync("READ");
+            const mapRead =
+                (globalThis.GPUMapMode && typeof globalThis.GPUMapMode.READ === 'number')
+                    ? globalThis.GPUMapMode.READ
+                    : 0x0001;
+            await stagingBuffer.mapAsync(mapRead);
             const arrayBuffer = stagingBuffer.getMappedRange();
             const resultArray = new Uint32Array(arrayBuffer);
             

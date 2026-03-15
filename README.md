@@ -137,6 +137,14 @@ $ ./compile.sh
 It will output 2 files: `nano-pow.js` and `nano-pow.wasm`. To get directions on how to use these files, check the JS files in the `nano-pow` directory.
 
 
+### Testing
+
+- `npm test` runs `test/unit-tests.js` (WASM, WebGPU, `PowService`).
+- `npm run benchmark:node` (`test/benchmark.js`) exercises WASM, multi-threaded WASM, and WebGPU stats.
+- `npm run benchmark:web` or `node benchmark-server.js` + `open http://localhost:3000/benchmark.html` launches the interactive UI.
+- `npm run test:e2e` / `npm run test:e2e:watch` execute the Playwright suite in `tests/benchmark.spec.js` against the UI.
+
+
 ### Additional help
 
 There are more docs about the emscripten itself [here](http://kripken.github.io/emscripten-site/docs/porting/connecting_cpp_and_javascript/index.html).

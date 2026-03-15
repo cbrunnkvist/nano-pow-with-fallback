@@ -39,6 +39,7 @@ jobs:
       - name: Copy static files
         run: |
           cp benchmark.html docs/
+          cp benchmark.html docs/index.html
           cp -r nano-pow docs/
           cp src/webgpu-pow.js docs/src/
           cp src/webgl-pow.js docs/src/

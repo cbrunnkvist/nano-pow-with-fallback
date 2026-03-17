@@ -77,8 +77,17 @@ export class WebGPUPow {
         if (!adapter) throw new Error("No GPU adapter found");
         this.device = await adapter.requestDevice();
 
-        const response = await fetch('./src/pow.wgsl');
-        this.shaderCode = await response.text();
+        if (typeof window !== 'undefined') {
+            const response = await fetch('./src/pow.wgsl');
+            this.shaderCode = await response.text();
+        } else {
+            const fs = await import('fs');
+            const path = await import('path');
+            const { fileURLToPath } = await import('url');
+            const dirname = path.dirname(fileURLToPath(import.meta.url));
+            const shaderPath = path.join(dirname, 'pow.wgsl');
+            this.shaderCode = fs.readFileSync(shaderPath, 'utf8');
+        }
 
         const bindGroupLayout = this.device.createBindGroupLayout({
             entries: [

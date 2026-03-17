@@ -207,8 +207,18 @@ export class PowService {
           return await nanoPow.getProofOfWorkMultiThreaded({ hash, threshold });
         }
         if (wasmModule) {
-          const proofOfWork = wasmModule.ccall('getProofOfWork', 'string', ['string', 'string'], [hash, threshold]);
-          return { proofOfWork };
+          try {
+            const proofOfWork = wasmModule.ccall('getProofOfWork', 'string', ['string', 'string'], [hash, threshold]);
+            if (!proofOfWork || proofOfWork === '0000000000000000') {
+              throw new Error('WASM backend returned invalid/zero nonce - possible emscripten runtime failure');
+            }
+            return { proofOfWork };
+          } catch (err) {
+            if (err.message.includes('WASM backend returned invalid')) {
+              throw err;
+            }
+            throw new Error('WASM ccall failed: ' + err.message);
+          }
         }
         throw new Error('WASM backend was not initialized');
       },

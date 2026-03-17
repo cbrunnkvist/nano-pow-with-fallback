@@ -28,5 +28,6 @@
     "nanocurrency": "^2.5.0",
     "webgpu": "^0.1.0"
   },
+  "license": "BSD-3-Clause",
   "type": "module"
 }

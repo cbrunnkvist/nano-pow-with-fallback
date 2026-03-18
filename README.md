@@ -146,7 +146,7 @@ It will output 2 files: `nano-pow.js` and `nano-pow.wasm`. To get directions on 
 
 ### Related packages
 
-- [`nano-pow`](https://www.npmjs.com/package/nano-pow) (v5.1.10) also bundles WebGPU, WebGL, and WASM proof-of-work generators with validation/shading fallbacks for Nano and publishes CLI/server binaries, so we position `nano-pow-with-fallback` as the programmable PoW service that ties them together with cancellation, discovery, and documented fallbacks.
+- [`nano-pow`](https://www.npmjs.com/package/nano-pow) (v5.1.10) also bundles WebGPU, WebGL, and WASM proof-of-work generators with validation/shading fallbacks for Nano and publishes CLI/server binaries. While both packages provide similar backends, `nano-pow-with-fallback` focuses on a programmable `PowService` interface with explicit backend selection, cancellation support, and documented fallback behavior for advanced integration scenarios.
 
 
 ### Additional help

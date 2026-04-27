@@ -143,12 +143,6 @@ export class WebGPUPow {
         const thresholdU32 = new Uint32Array([thresholdLow, thresholdHigh]);
 
 
-        // Result buffer
-        const resultBuffer = this.device.createBuffer({
-            size: 16, // found (4) + padding(4) + nonce (8)
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
-        });
-
         // Input buffer (Uniform)
         // struct Input { hash: [4]vec2<u32>, threshold: vec2<u32>, base_nonce: vec2<u32> }
         // size: 32 + 8 + 8 = 48 bytes. Uniforms must be aligned to 16 bytes? 
@@ -182,13 +176,27 @@ export class WebGPUPow {
         });
         this.device.queue.writeBuffer(sigmaBuffer, 0, sigmaU32);
 
-        const bindGroup = this.device.createBindGroup({
-            layout: this.pipeline.getBindGroupLayout(0),
-            entries: [
-                { binding: 0, resource: { buffer: resultBuffer } },
-                { binding: 1, resource: { buffer: inputBuffer } },
-                { binding: 2, resource: { buffer: sigmaBuffer } },
-            ],
+        const bufferSets = Array.from({ length: 2 }, () => {
+            const resultBuffer = this.device.createBuffer({
+                size: 16,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+            });
+
+            const stagingBuffer = this.device.createBuffer({
+                size: 16,
+                usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+            });
+
+            const bindGroup = this.device.createBindGroup({
+                layout: this.pipeline.getBindGroupLayout(0),
+                entries: [
+                    { binding: 0, resource: { buffer: resultBuffer } },
+                    { binding: 1, resource: { buffer: inputBuffer } },
+                    { binding: 2, resource: { buffer: sigmaBuffer } },
+                ],
+            });
+
+            return { resultBuffer, stagingBuffer, bindGroup };
         });
 
         let baseNonceLow = Math.floor(Math.random() * 0xFFFFFFFF);
@@ -197,63 +205,77 @@ export class WebGPUPow {
         const workgroupSize = 64;
         const totalThreads = 1024 * 1024; // 1M nonces per dispatch
         const workgroupCount = totalThreads / workgroupSize;
+        const zeroResult = new Uint32Array([0, 0, 0, 0]);
+        const mapReadMode = (globalThis.GPUMapMode && typeof globalThis.GPUMapMode.READ === 'number')
+            ? globalThis.GPUMapMode.READ
+            : 0x0001;
+
+        const readResult = (stagingBuffer) => {
+            const arrayBuffer = stagingBuffer.getMappedRange();
+            if (arrayBuffer.byteLength < 16) {
+                return null;
+            }
+            const view = new DataView(arrayBuffer);
+            const found = view.getUint32(0, true);
+            if (found === 0) {
+                return null;
+            }
+            const nonceLow = view.getUint32(8, true);
+            const nonceHigh = view.getUint32(12, true);
+            return { nonceLow, nonceHigh };
+        };
+
+        let iteration = 0;
+        let pendingRead = null;
+        let pendingIndex = 0;
+        let currentIndex = 0;
 
         while (true) {
-            // Reset result buffer
-            this.device.queue.writeBuffer(resultBuffer, 0, new Uint32Array([0, 0, 0, 0]));
-            
-            // Update base nonce
+            const bufferSet = bufferSets[currentIndex];
+
+            this.device.queue.writeBuffer(bufferSet.resultBuffer, 0, zeroResult);
             this.device.queue.writeBuffer(inputBuffer, 40, new Uint32Array([baseNonceLow, baseNonceHigh]));
 
             const commandEncoder = this.device.createCommandEncoder();
             const passEncoder = commandEncoder.beginComputePass();
             passEncoder.setPipeline(this.pipeline);
-            passEncoder.setBindGroup(0, bindGroup);
+            passEncoder.setBindGroup(0, bufferSet.bindGroup);
             passEncoder.dispatchWorkgroups(workgroupCount);
             passEncoder.end();
 
-            const stagingBuffer = this.device.createBuffer({
-                size: 16,
-                usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-            });
-
-            commandEncoder.copyBufferToBuffer(resultBuffer, 0, stagingBuffer, 0, 16);
+            commandEncoder.copyBufferToBuffer(bufferSet.resultBuffer, 0, bufferSet.stagingBuffer, 0, 16);
             this.device.queue.submit([commandEncoder.finish()]);
 
-            const mapRead =
-                (globalThis.GPUMapMode && typeof globalThis.GPUMapMode.READ === 'number')
-                    ? globalThis.GPUMapMode.READ
-                    : 0x0001;
+            const currentRead = bufferSet.stagingBuffer.mapAsync(mapReadMode);
 
-            // @sylphx/webgpu in Node.js expects a string "READ" or "WRITE" instead of a bitmask
-            const isNode = typeof process !== 'undefined' && process.versions?.node;
-            const mode = isNode ? "READ" : mapRead;
-            await stagingBuffer.mapAsync(mode);
-            const arrayBuffer = stagingBuffer.getMappedRange();
-            const resultArray = new Uint32Array(arrayBuffer);
-            
-            if (resultArray[0] !== 0) {
-                // Found!
-                const nonceLow = resultArray[2];
-                const nonceHigh = resultArray[3];
-                stagingBuffer.unmap();
-                
-                // Return as hex string (BE, 16 chars)
-                const h = nonceHigh.toString(16).padStart(8, '0');
-                const l = nonceLow.toString(16).padStart(8, '0');
-                // Wait, Nano PoW usually returns the nonce such that when hashed it meets the threshold.
-                // In nano-pow.cpp: sprintf(workAsChar, "%016llx", work);
-                // %016llx is big-endian hex representation of the 64-bit uint.
-                return h + l;
+            if (pendingRead) {
+                await pendingRead;
+                const result = readResult(bufferSets[pendingIndex].stagingBuffer);
+                bufferSets[pendingIndex].stagingBuffer.unmap();
+                if (result) {
+                    const h = result.nonceHigh.toString(16).padStart(8, '0');
+                    const l = result.nonceLow.toString(16).padStart(8, '0');
+                    currentRead.then(
+                        () => bufferSet.stagingBuffer.unmap(),
+                        () => bufferSet.stagingBuffer.unmap(),
+                    );
+                    return h + l;
+                }
             }
 
-            stagingBuffer.unmap();
-            
-            // Increment base nonce for next batch
+            pendingRead = currentRead;
+            pendingIndex = currentIndex;
+            currentIndex = (currentIndex + 1) % bufferSets.length;
+            iteration++;
+
             baseNonceLow += totalThreads;
             if (baseNonceLow > 0xFFFFFFFF) {
                 baseNonceLow -= 0x100000000;
                 baseNonceHigh++;
+            }
+
+            if (iteration % 10 === 0) {
+                await new Promise(r => setTimeout(r, 0));
             }
         }
     }

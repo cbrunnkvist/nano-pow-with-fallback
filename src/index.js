@@ -1,4 +1,4 @@
-import { PowService, PowBackendName, PowServiceAbortError } from './pow-service.js';
+import { PowService, PowBackendName, PowServiceAbortError, DEFAULT_BACKEND_ORDER } from './pow-service.js';
 import { validateWork } from './validate-work.js';
 
 export const THRESHOLD__SEND_CHANGE = "fffffff800000000";
@@ -9,6 +9,7 @@ const defaultPowService = new PowService();
 export async function getProofOfWork({ hash, threshold }) {
   const { proofOfWork } = await defaultPowService.getProofOfWork({ hash, threshold });
 
+  // PowService._normalizeResult already asserts non-zero; this is a belt-and-suspenders guard.
   if (!proofOfWork || proofOfWork === '0000000000000000') {
     throw new Error('Invalid proof of work: received zero nonce');
   }
@@ -27,4 +28,4 @@ export function getPowService() {
 
 export { WebGPUPow } from './webgpu-pow.js';
 export { WebGLPow } from './webgl-pow.js';
-export { PowService, PowBackendName, PowServiceAbortError };
+export { PowService, PowBackendName, PowServiceAbortError, DEFAULT_BACKEND_ORDER };

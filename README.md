@@ -140,9 +140,99 @@ It will output 2 files: `nano-pow.js` and `nano-pow.wasm`. To get directions on 
 ### Testing
 
 - `npm test` runs `test/unit-tests.js` (WASM, WebGPU, `PowService`).
+- `npm run test:service` runs `test/pow-service-tests.js` (backend order, probe report, WASM fix, cancellation).
+- `npm run test:cli` runs `test/cli-tests.js` (CLI argument validation, preamble output, bare work line).
 - `npm run benchmark:node` (`test/benchmark.js`) exercises WASM, multi-threaded WASM, and WebGPU stats while displaying a `Valid block` column that comes from `nanocurrency.validateWork`.
 - `npm run benchmark:web` or `node benchmark-server.js` + `open http://localhost:3000/benchmark.html` launches the interactive UI, which mirrors the CLI table and shows the same validation badge for each backend.
 - `npm run test:e2e` / `npm run test:e2e:watch` execute the Playwright suite in `tests/benchmark.spec.js` against the UI.
+
+### CLI
+
+The package exposes a developer-oriented CLI for probing backend capabilities, experimenting with backend selection order, and generating Nano PoW on the command line.
+
+```bash
+npx nano-pow-with-fallback --hash <64-hex> --threshold <16-hex>
+```
+
+The CLI always prints a preamble describing what it detected and which backend it selected, then prints the generated work value on a final bare line — exactly as it would appear in the `"work"` field of a Nano state block.
+
+**Options**
+
+| Option | Description |
+|---|---|
+| `--hash <64-hex>` | Previous block hash (or account public key for open blocks) |
+| `--threshold <16-hex>` | Work difficulty threshold |
+| `--backends <list>` | Comma-separated ordered allowlist. Omitted backends are disabled. |
+| `--help` | Show help |
+
+**Backend thresholds**
+
+| Block type | Threshold |
+|---|---|
+| Open / Receive | `fffffe0000000000` |
+| Send / Change | `fffffff800000000` |
+
+**Examples**
+
+```bash
+# Default backend selection (WebGPU → WebGL → WASM)
+npx nano-pow-with-fallback \
+  --hash BD9F737DDECB0A34DFBA0EDF7017ACB0EF0AA04A6F7A73A406191EF80BB20000 \
+  --threshold fffffe0000000000
+
+# Force WASM only
+npx nano-pow-with-fallback \
+  --hash BD9F737DDECB0A34DFBA0EDF7017ACB0EF0AA04A6F7A73A406191EF80BB20000 \
+  --threshold fffffe0000000000 \
+  --backends wasm
+
+# WebGPU first, fall back to WASM (skip WebGL)
+npx nano-pow-with-fallback \
+  --hash BD9F737DDECB0A34DFBA0EDF7017ACB0EF0AA04A6F7A73A406191EF80BB20000 \
+  --threshold fffffe0000000000 \
+  --backends webgpu,wasm
+```
+
+**Example output**
+
+```text
+Default backend priority:  webgpu, webgl, wasm
+Requested backend priority: wasm
+Effective backend priority: wasm
+
+Probe webgpu: skipped (not in effective order)
+Probe webgl: skipped (not in effective order)
+Probe wasm: available
+
+Selected backend: wasm
+
+WASM batches: 3
+Elapsed: 12341 ms
+Validation: valid for threshold fffffe0000000000
+
+5992e2a700abc19e
+```
+
+**Deep tracing with `DEBUG`**
+
+Set `DEBUG` to one or more comma-separated namespaces to enable structured trace output on `stderr`. The preamble and final work line on `stdout` are unaffected.
+
+```bash
+# Trace everything
+DEBUG=nano-pow:* npx nano-pow-with-fallback \
+  --hash BD9F737DDECB0A34DFBA0EDF7017ACB0EF0AA04A6F7A73A406191EF80BB20000 \
+  --threshold fffffe0000000000
+
+# Trace only fallback selection and WASM batch loop
+DEBUG=nano-pow:fallback,nano-pow:wasm npx nano-pow-with-fallback \
+  --hash BD9F737DDECB0A34DFBA0EDF7017ACB0EF0AA04A6F7A73A406191EF80BB20000 \
+  --threshold fffffe0000000000 \
+  --backends wasm
+```
+
+Available namespaces: `nano-pow:fallback`, `nano-pow:wasm`, `nano-pow:webgpu`, `nano-pow:webgl`, `nano-pow:validate`.
+
+> **Note on `0000000000000000` in debug output:** The WASM backend splits work into 5M-iteration batches. A zero nonce in a `nano-pow:wasm` trace line means no solution was found in *that batch* — the loop continues until a valid nonce is found. It does not mean the API returned zero work.
 
 ### Related packages
 

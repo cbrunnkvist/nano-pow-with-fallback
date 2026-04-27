@@ -9,9 +9,14 @@
     "./webgpu": "./src/webgpu-pow.js",
     "./webgl": "./src/webgl-pow.js"
   },
+  "bin": {
+    "nano-pow-with-fallback": "./bin/nano-pow-with-fallback.js"
+  },
   "scripts": {
     "start": "node benchmark-server.js",
     "test": "node test/unit-tests.js",
+    "test:service": "node test/pow-service-tests.js",
+    "test:cli": "node test/cli-tests.js",
     "benchmark": "node test/benchmark.js",
     "benchmark:node": "node test/benchmark.js",
     "benchmark:web": "node benchmark-server.js",

@@ -224,7 +224,11 @@ export class WebGPUPow {
                 (globalThis.GPUMapMode && typeof globalThis.GPUMapMode.READ === 'number')
                     ? globalThis.GPUMapMode.READ
                     : 0x0001;
-            await stagingBuffer.mapAsync(mapRead);
+
+            // @sylphx/webgpu in Node.js expects a string "READ" or "WRITE" instead of a bitmask
+            const isNode = typeof process !== 'undefined' && process.versions?.node;
+            const mode = isNode ? "READ" : mapRead;
+            await stagingBuffer.mapAsync(mode);
             const arrayBuffer = stagingBuffer.getMappedRange();
             const resultArray = new Uint32Array(arrayBuffer);
             

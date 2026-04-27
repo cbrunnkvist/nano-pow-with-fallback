@@ -135,7 +135,9 @@ export class PowService {
       name: PowBackendName.WEBGPU,
       priority: 0,
       supports: () => {
-        return Boolean(typeof navigator !== 'undefined' && navigator?.gpu);
+        if (typeof navigator !== 'undefined' && navigator?.gpu) return true;
+        if (isNode) return true;
+        return false;
       },
       init: async () => {
         instance = new WebGPUPow();
@@ -215,6 +217,17 @@ export class PowService {
             return { proofOfWork };
           } catch (err) {
             if (err.message.includes('WASM backend returned invalid')) {
+              throw err;
+            }
+            throw new Error('WASM ccall failed: ' + err.message);
+          }
+        }
+        throw new Error('WASM backend was not initialized');
+      },
+    };
+  }
+}
+          if (err.message.includes('WASM backend returned invalid')) {
               throw err;
             }
             throw new Error('WASM ccall failed: ' + err.message);

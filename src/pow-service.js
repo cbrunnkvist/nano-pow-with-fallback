@@ -199,6 +199,17 @@ export class PowService {
           const require = createRequire(import.meta.url);
           const __dirname = path.dirname(fileURLToPath(import.meta.url));
           wasmModule = require(path.join(__dirname, '../nano-pow/nano-pow-node.cjs'));
+
+          // Wait for Emscripten runtime to be initialized
+          if (!wasmModule.ready) {
+            await new Promise((resolve) => {
+              const check = () => {
+                if (wasmModule.ready) resolve();
+                else setTimeout(check, 10);
+              };
+              check();
+            });
+          }
           return;
         }
 
@@ -210,26 +221,18 @@ export class PowService {
         }
         if (wasmModule) {
           try {
-            const proofOfWork = wasmModule.ccall('getProofOfWork', 'string', ['string', 'string'], [hash, threshold]);
-            if (!proofOfWork || proofOfWork === '0000000000000000') {
-              throw new Error('WASM backend returned invalid/zero nonce - possible emscripten runtime failure');
+            let proofOfWork = '0000000000000000';
+            // The WASM function has a built-in iteration limit and returns zero if no work is found.
+            // We loop until a valid nonce is found.
+            while (!proofOfWork || proofOfWork === '0000000000000000') {
+              proofOfWork = wasmModule.ccall('getProofOfWork', 'string', ['string', 'string'], [hash, threshold]);
+              if (!proofOfWork || proofOfWork === '0000000000000000') {
+                // Yield to event loop to prevent blocking and allow cancellation
+                await new Promise((resolve) => setTimeout(resolve, 0));
+              }
             }
             return { proofOfWork };
           } catch (err) {
-            if (err.message.includes('WASM backend returned invalid')) {
-              throw err;
-            }
-            throw new Error('WASM ccall failed: ' + err.message);
-          }
-        }
-        throw new Error('WASM backend was not initialized');
-      },
-    };
-  }
-}
-          if (err.message.includes('WASM backend returned invalid')) {
-              throw err;
-            }
             throw new Error('WASM ccall failed: ' + err.message);
           }
         }

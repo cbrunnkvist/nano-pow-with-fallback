@@ -28,6 +28,14 @@
     "nanocurrency": "^2.5.0",
     "webgpu": "^0.1.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cbrunnkvist/nano-pow-with-fallback.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cbrunnkvist/nano-pow-with-fallback/issues"
+  },
+  "homepage": "https://github.com/cbrunnkvist/nano-pow-with-fallback#readme",
   "license": "BSD-3-Clause",
   "type": "module"
 }
